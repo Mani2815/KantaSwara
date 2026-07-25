@@ -1,0 +1,370 @@
+/* ============================================
+   KANTASWARA DESIGN TOKENS
+   Single source of truth for all visual values.
+   Never use raw hex values in components.
+   Always reference semantic tokens.
+   ============================================ */
+
+:root {
+  /* ============================================
+     LAYOUT CONSTANTS
+     ============================================ */
+  --layout-max-width: 1200px;
+
+  /* ============================================
+     RAW COLOR PALETTE
+     Not used directly in components.
+     Always reference semantic tokens below.
+     ============================================ */
+
+  /* Neutral (Blue-Grey foundation) */
+  --raw-neutral-950: #060810;
+  --raw-neutral-900: #0B0E18;
+  --raw-neutral-850: #0F1320;
+  --raw-neutral-800: #141926;
+  --raw-neutral-750: #192030;
+  --raw-neutral-700: #1E2738;
+  --raw-neutral-600: #2A3650;
+  --raw-neutral-500: #3D5068;
+  --raw-neutral-400: #566882;
+  --raw-neutral-300: #7A90A8;
+  --raw-neutral-200: #A3B5C8;
+  --raw-neutral-100: #D0DCE8;
+  --raw-neutral-50:  #EBF0F5;
+  --raw-neutral-0:   #F5F8FA;
+
+  /* Teal — Primary brand / voice active */
+  --raw-teal-950: #001E18;
+  --raw-teal-900: #003328;
+  --raw-teal-800: #005240;
+  --raw-teal-700: #007558;
+  --raw-teal-600: #009872;
+  --raw-teal-500: #00B989;
+  --raw-teal-400: #1FD0A0;
+  --raw-teal-300: #4DDCB8;
+  --raw-teal-200: #88EDD3;
+  --raw-teal-100: #C2F5E9;
+  --raw-teal-50:  #E6FBF6;
+
+  /* Amber — Warning / attention */
+  --raw-amber-900: #451A00;
+  --raw-amber-700: #92400E;
+  --raw-amber-500: #F59E0B;
+  --raw-amber-400: #FBBF24;
+  --raw-amber-200: #FDE68A;
+  --raw-amber-100: #FEF3C7;
+
+  /* Red — Danger / failure / call ended */
+  --raw-red-900:   #450A0A;
+  --raw-red-700:   #991B1B;
+  --raw-red-500:   #EF4444;
+  --raw-red-400:   #F87171;
+  --raw-red-200:   #FECACA;
+  --raw-red-100:   #FEE2E2;
+
+  /* Violet — Workflow triggers / entry nodes */
+  --raw-violet-900: #2E1065;
+  --raw-violet-700: #5B21B6;
+  --raw-violet-500: #8B5CF6;
+  --raw-violet-400: #A78BFA;
+  --raw-violet-200: #DDD6FE;
+  --raw-violet-100: #EDE9FE;
+
+  /* Blue — Informational / integration nodes */
+  --raw-blue-900: #0C1A3A;
+  --raw-blue-700: #1E40AF;
+  --raw-blue-500: #3B82F6;
+  --raw-blue-400: #60A5FA;
+  --raw-blue-200: #BFDBFE;
+  --raw-blue-100: #DBEAFE;
+
+  /* Green — Success (distinct from teal) */
+  --raw-green-500: #22C55E;
+  --raw-green-400: #4ADE80;
+  --raw-green-200: #BBF7D0;
+
+  /* ============================================
+     SPACING SYSTEM
+     Base unit: 4px
+     ============================================ */
+  --space-0:   0px;
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+  --space-16:  64px;
+  --space-20:  80px;
+  --space-24:  96px;
+  --space-32: 128px;
+
+  /* ============================================
+     SHADOWS & EFFECTS
+     ============================================ */
+  --shadow-sm:  0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md:  0 4px 12px 0 rgba(0, 0, 0, 0.5);
+  --shadow-lg:  0 8px 24px 0 rgba(0, 0, 0, 0.6);
+  --shadow-xl:  0 16px 40px 0 rgba(0, 0, 0, 0.7);
+
+  /* Glow (used only for active call states) */
+  --glow-primary: 0 0 20px rgba(0, 185, 137, 0.3);
+  --glow-danger:  0 0 20px rgba(239, 68, 68, 0.3);
+  --glow-warning: 0 0 20px rgba(245, 158, 11, 0.3);
+
+  /* Border Radius */
+  --radius-none: 0px;
+  --radius-sm:   3px;
+  --radius-md:   6px;
+  --radius-lg:   10px;
+  --radius-xl:   16px;
+  --radius-full: 9999px;
+
+  /* Blur */
+  --blur-sm:  blur(4px);
+  --blur-md:  blur(8px);
+  --blur-lg:  blur(16px);
+
+  /* Z-Index Scale */
+  --z-base:      0;
+  --z-raised:    10;
+  --z-dropdown:  100;
+  --z-sticky:    200;
+  --z-overlay:   300;
+  --z-modal:     400;
+  --z-toast:     500;
+  --z-tooltip:   600;
+  --z-commander: 700;
+
+  /* ============================================
+     DURATION & EASING
+     ============================================ */
+  --duration-instant:  50ms;
+  --duration-fast:    100ms;
+  --duration-normal:  200ms;
+  --duration-slow:    300ms;
+  --duration-slower:  500ms;
+  --duration-voice:  1200ms;
+
+  --ease-out:        cubic-bezier(0.0, 0.0, 0.2, 1.0);
+  --ease-in:         cubic-bezier(0.4, 0.0, 1.0, 1.0);
+  --ease-in-out:     cubic-bezier(0.4, 0.0, 0.2, 1.0);
+  --ease-sharp:      cubic-bezier(0.4, 0.0, 0.6, 1.0);
+  --ease-linear:     linear;
+}
+
+/* ============================================
+   SEMANTIC TOKENS — DARK THEME (Default)
+   ============================================ */
+:root,
+[data-theme="dark"] {
+  /* === BACKGROUNDS === */
+  --color-bg-canvas:     #0a0a0a;
+  --color-bg-base:       #0d0d0d;
+  --color-bg-surface:    #111111;
+  --color-bg-elevated:   #161616;
+  --color-bg-overlay:    #1c1c1c;
+  --color-bg-subtle:     #222222;
+  --color-bg-inset:      #080808;
+
+  /* === BORDERS === */
+  --color-border-default:  #222222;
+  --color-border-subtle:   #1a1a1a;
+  --color-border-emphasis: #333333;
+  --color-border-strong:   #444444;
+  --color-border-muted:    #111111;
+
+  /* === TEXT === */
+  --color-text-primary:    #F0F0F0;
+  --color-text-secondary:  #A3A3A3;
+  --color-text-muted:      #737373;
+  --color-text-disabled:   #525252;
+  --color-text-inverse:    #0a0a0a;
+  --color-text-link:       #ff6600;
+  --color-text-link-hover: #ff8533;
+
+  /* === PRIMARY (Orange — KantaSwara Brand) === */
+  --color-primary:          #ff6600;
+  --color-primary-hover:    #ff7a1a;
+  --color-primary-active:   #e65c00;
+  --color-primary-subtle:   #2a1200;
+  --color-primary-muted:    #3d1a00;
+  --color-primary-emphasis: #ff8c33;
+  --color-primary-foreground: #ffffff;
+
+  /* === SEMANTIC — STATUS === */
+  --color-success:           #22C55E;
+  --color-success-subtle:    rgba(34, 197, 94, 0.12);
+  --color-success-foreground:#16A34A;
+
+  --color-warning:           #F59E0B;
+  --color-warning-subtle:    rgba(245, 158, 11, 0.12);
+  --color-warning-foreground:#D97706;
+
+  --color-danger:            #EF4444;
+  --color-danger-subtle:     rgba(239, 68, 68, 0.12);
+  --color-danger-foreground: #DC2626;
+  --color-danger-hover:      #F87171;
+
+  --color-info:              #3B82F6;
+  --color-info-subtle:       rgba(59, 130, 246, 0.12);
+  --color-info-foreground:   #2563EB;
+
+  /* === CALL STATUS (Operational) === */
+  --color-call-active:       #ff6600;
+  --color-call-active-glow:  rgba(255, 102, 0, 0.25);
+  --color-call-completed:    #566882;
+  --color-call-failed:       #EF4444;
+  --color-call-queued:       #F59E0B;
+  --color-call-voicemail:    #8B5CF6;
+  --color-call-transferred:  #3B82F6;
+  --color-call-no-answer:    #566882;
+
+  /* === WORKFLOW NODES === */
+  --color-node-trigger:      #8B5CF6;
+  --color-node-trigger-bg:   rgba(139, 92, 246, 0.12);
+  --color-node-action:       #ff6600;
+  --color-node-action-bg:    rgba(255, 102, 0, 0.12);
+  --color-node-condition:    #F59E0B;
+  --color-node-condition-bg: rgba(245, 158, 11, 0.12);
+  --color-node-integration:  #3B82F6;
+  --color-node-integration-bg: rgba(59, 130, 246, 0.12);
+  --color-node-end:          #EF4444;
+  --color-node-end-bg:       rgba(239, 68, 68, 0.12);
+  --color-node-selected:     #00B989;
+  --color-node-selected-bg:  rgba(0, 185, 137, 0.08);
+
+  /* === VOICE VISUALIZATION === */
+  --color-waveform-active:   #00B989;
+  --color-waveform-idle:     #2A3650;
+  --color-waveform-agent:    #00B989;
+  --color-waveform-user:     #8B5CF6;
+
+  /* === FOCUS === */
+  --color-focus-ring: rgba(0, 185, 137, 0.5);
+  --color-focus-ring-offset: #060810;
+
+  /* === OVERLAY === */
+  --color-overlay: rgba(6, 8, 16, 0.7);
+  --color-overlay-heavy: rgba(6, 8, 16, 0.85);
+
+  /* === CHART PALETTE === */
+  --color-chart-1: #00B989;
+  --color-chart-2: #8B5CF6;
+  --color-chart-3: #3B82F6;
+  --color-chart-4: #F59E0B;
+  --color-chart-5: #EF4444;
+  --color-chart-6: #22C55E;
+  --color-chart-7: #EC4899;
+  --color-chart-8: #14B8A6;
+}
+
+/* ============================================
+   SEMANTIC TOKENS — LIGHT THEME
+   ============================================ */
+[data-theme="light"] {
+  --color-bg-canvas:     #F5F8FA;
+  --color-bg-base:       #FFFFFF;
+  --color-bg-surface:    #F0F4F8;
+  --color-bg-elevated:   #FFFFFF;
+  --color-bg-overlay:    #E8EDF3;
+  --color-bg-subtle:     #EBF0F5;
+  --color-bg-inset:      #E2EAF0;
+
+  --color-border-default:  #D0DCE8;
+  --color-border-subtle:   #E4ECF2;
+  --color-border-emphasis: #A3B5C8;
+  --color-border-strong:   #7A90A8;
+
+  --color-text-primary:    #0B0E18;
+  --color-text-secondary:  #2A3650;
+  --color-text-muted:      #566882;
+  --color-text-disabled:   #A3B5C8;
+
+  --color-primary:          #ff6600;
+  --color-primary-hover:    #ff7a1a;
+  --color-primary-active:   #e65c00;
+  --color-primary-subtle:   #ffe0cc;
+  --color-primary-foreground: #FFFFFF;
+
+  --color-call-active:      #ff6600;
+  --color-node-action:      #ff6600;
+  --color-waveform-active:  #ff6600;
+
+  --color-overlay: rgba(0, 0, 0, 0.4);
+  --color-overlay-heavy: rgba(0, 0, 0, 0.6);
+
+  --color-focus-ring: rgba(0, 117, 88, 0.4);
+  --color-focus-ring-offset: #FFFFFF;
+
+  --shadow-sm:  0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md:  0 4px 12px 0 rgba(0, 0, 0, 0.08);
+  --shadow-lg:  0 8px 24px 0 rgba(0, 0, 0, 0.12);
+  --shadow-xl:  0 16px 40px 0 rgba(0, 0, 0, 0.16);
+}
+
+/* ============================================
+   MARKETING / LANDING PAGE PALETTE
+   "Monochrome × Electric Orange"
+   ============================================ */
+[data-page="marketing"] {
+  /* === BACKGROUNDS (Primary: White) === */
+  --color-bg-canvas:     #FFFFFF;
+  --color-bg-base:       #FFFFFF;
+  --color-bg-surface:    #F5F5F5;
+  --color-bg-elevated:   #FFFFFF;
+  --color-bg-overlay:    #F5F5F5;
+  --color-bg-subtle:     #FAFAFA;
+  --color-bg-inset:      #F0F0F0;
+
+  /* === BORDERS (Tertiary: Black/Greys) === */
+  --color-border-default:  #E0E0E0;
+  --color-border-subtle:   #F0F0F0;
+  --color-border-emphasis: #000000;
+  --color-border-strong:   #000000;
+
+  /* === TEXT (Tertiary: Black) === */
+  --color-text-primary:    #000000;
+  --color-text-secondary:  #404040;
+  --color-text-muted:      #737373;
+  --color-text-disabled:   #A3A3A3;
+  --color-text-link:       #FF5E00;
+  --color-text-link-hover: #CC4B00;
+
+  /* === BRAND (Primary: White/Black) === */
+  --color-primary:          #000000;
+  --color-primary-hover:    #333333;
+  --color-primary-active:   #000000;
+  --color-primary-subtle:   rgba(0, 0, 0, 0.05);
+  --color-primary-muted:    rgba(0, 0, 0, 0.1);
+  --color-primary-emphasis: #000000;
+  --color-primary-foreground: #FFFFFF;
+
+  /* === CTA (Secondary: Electric Orange) === */
+  --color-cta:             #FF5E00;
+  --color-cta-hover:       #FF751F;
+  --color-cta-active:      #CC4B00;
+  --color-cta-subtle:      rgba(255, 94, 0, 0.1);
+  --color-cta-foreground:  #FFFFFF;
+
+  /* === STATUS (Simplified to match scheme) === */
+  --color-success:         #FF5E00;
+  --color-success-subtle:  rgba(255, 94, 0, 0.1);
+
+  /* === FOCUS === */
+  --color-focus-ring:        rgba(255, 94, 0, 0.5);
+  --color-focus-ring-offset: #FFFFFF;
+
+  /* === OVERLAY === */
+  --color-overlay:       rgba(0, 0, 0, 0.5);
+  --color-overlay-heavy: rgba(0, 0, 0, 0.8);
+
+  /* === SHADOWS (Sharp & Monochromatic) === */
+  --shadow-sm:  0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md:  0 4px 12px 0 rgba(0, 0, 0, 0.1);
+  --shadow-lg:  0 8px 24px 0 rgba(0, 0, 0, 0.15);
+  --shadow-xl:  0 16px 40px 0 rgba(0, 0, 0, 0.2);
+}

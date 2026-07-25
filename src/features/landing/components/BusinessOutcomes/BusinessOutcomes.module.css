@@ -1,0 +1,340 @@
+.section {
+  padding: 80px var(--space-4);
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
+  border-top: 1px solid var(--color-border-subtle);
+  position: relative;
+  overflow: hidden;
+}
+
+.inner {
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-cta, #FF5E00);
+  margin-bottom: var(--space-3);
+  font-family: var(--font-body);
+}
+
+.headline {
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 16px;
+  font-family: var(--font-heading);
+}
+
+.subheadline {
+  font-size: var(--text-body-md);
+  color: var(--color-text-secondary);
+  max-width: 720px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* UNIFIED DASHBOARD WITH SIDEBAR */
+.unifiedDashboard {
+  background: #060810;
+  border: 1px solid var(--color-border-emphasis);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+}
+
+.dashboardLayout {
+  display: grid;
+  grid-template-columns: 210px 1px 1fr;
+  align-items: stretch;
+}
+
+@media (max-width: 768px) {
+  .dashboardLayout {
+    grid-template-columns: 1fr;
+  }
+  .verticalDivider {
+    display: none;
+  }
+}
+
+/* LEFT SIDEBAR PANEL */
+.sidebarPane {
+  background: #0B0E18;
+  padding: 24px var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sidebarHeader {
+  padding-bottom: 8px;
+  border-bottom: 1px solid #1E2738;
+}
+
+.sidebarTitle {
+  font-size: 10px;
+  color: #566882;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  font-family: var(--font-body);
+}
+
+.tabsVerticalList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tabVerticalButton {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  color: #8A9BB5; /* Explicit slate text */
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  text-align: left;
+  transition: color var(--duration-normal) var(--ease-out);
+  z-index: 1;
+  width: 100%;
+}
+
+.tabVerticalButton:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.tabVerticalButtonActive {
+  color: var(--color-cta, #FF5E00) !important;
+}
+
+.tabIcon {
+  flex-shrink: 0;
+}
+
+.tabText {
+  white-space: nowrap;
+}
+
+.activeTabIndicatorVertical {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 94, 0, 0.08);
+  border: 1px solid rgba(255, 94, 0, 0.2);
+  border-radius: var(--radius-md);
+  z-index: -1;
+}
+
+/* DIVIDER */
+.verticalDivider {
+  background: #1E2738;
+  align-self: stretch;
+  width: 1px;
+}
+
+/* RIGHT PANE CONTENT */
+.dashboardRightPane {
+  padding: 32px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.dashboardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dashboardStatusDot {
+  width: 7px;
+  height: 7px;
+  background-color: var(--color-cta, #FF5E00);
+  border-radius: 9999px;
+  box-shadow: 0 0 8px var(--color-cta, #FF5E00);
+  animation: glowPulse 2s infinite ease-in-out;
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.6; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+.dashboardTitle {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  font-family: var(--font-heading);
+}
+
+.liveBadge {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #22C55E;
+  background: rgba(34, 197, 94, 0.12);
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dashboardContent {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 992px) {
+  .metricsGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .metricsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.metricItem {
+  background: #0F1320; /* explicitly dark surface */
+  border: 1px solid #1E2738; /* explicitly dark border */
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.metricLabel {
+  font-size: 10px;
+  color: #566882; /* explicitly dark muted text */
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-family: var(--font-body);
+}
+
+.metricValueContainer {
+  display: flex;
+  align-items: baseline;
+}
+
+.metricNumber {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff; /* explicitly white */
+  line-height: 1;
+}
+
+.paneDivider {
+  height: 1px;
+  background: #1E2738; /* explicitly dark divider */
+  width: 100%;
+}
+
+/* DETAILS ROW */
+.detailsRow {
+  display: grid;
+  grid-template-columns: 1.1fr 1px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 992px) {
+  .detailsRow {
+    grid-template-columns: 1fr;
+  }
+  .innerVerticalDivider {
+    display: none;
+  }
+}
+
+.innerVerticalDivider {
+  background: #1E2738; /* explicitly dark divider */
+  align-self: stretch;
+  width: 1px;
+}
+
+.activitySection, .impactSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.subSectionTitle {
+  font-size: 11px;
+  color: #8A9BB5; /* explicitly slate text for title */
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 600;
+}
+
+.activityList, .impactList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+}
+
+.activityItem, .impactItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.activityItem {
+  font-family: var(--font-mono);
+}
+
+.activityCheck {
+  color: #22C55E;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.activityText {
+  color: #E8EDF5; /* explicitly off-white */
+}
+
+.impactIcon {
+  color: #22C55E;
+  font-weight: bold;
+  flex-shrink: 0;
+  font-family: var(--font-body);
+}
+
+.impactText {
+  color: #E8EDF5; /* explicitly off-white */
+  font-family: var(--font-body);
+}

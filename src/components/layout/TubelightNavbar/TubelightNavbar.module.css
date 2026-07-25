@@ -1,0 +1,121 @@
+.navbar-wrapper {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-sticky, 50);
+  margin-bottom: var(--space-6, 24px);
+}
+
+@media (min-width: 640px) {
+  .navbar-wrapper {
+    bottom: auto;
+    top: 0;
+    margin-bottom: 0;
+    padding-top: var(--space-6, 24px);
+  }
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  background: var(--color-bg-subtle, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--color-border-subtle, #E2E5EE);
+  backdrop-filter: blur(16px);
+  padding: 4px;
+  border-radius: 9999px;
+  box-shadow: var(--shadow-lg);
+}
+
+.nav-item {
+  position: relative;
+  cursor: pointer;
+  font-size: var(--text-body-sm, 14px);
+  font-weight: 600;
+  padding: var(--space-2, 8px) var(--space-6, 24px);
+  border-radius: 9999px;
+  transition: color 200ms ease;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.nav-item:hover {
+  color: var(--color-primary);
+}
+
+.nav-item--active {
+  background: var(--color-bg-inset);
+  color: var(--color-primary);
+}
+
+.nav-item__text {
+  display: none;
+}
+
+.nav-item__icon {
+  display: inline-flex;
+}
+
+@media (min-width: 768px) {
+  .nav-item__text {
+    display: inline;
+  }
+  .nav-item__icon {
+    display: none;
+  }
+}
+
+/* Lamp Effect */
+.lamp-wrapper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  background: var(--color-primary-subtle);
+  border-radius: 9999px;
+  z-index: -1;
+}
+
+.lamp {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 4px;
+  background: var(--color-primary);
+  border-top-left-radius: 9999px;
+  border-top-right-radius: 9999px;
+}
+
+.lamp__glow-1 {
+  position: absolute;
+  width: 48px;
+  height: 24px;
+  background: var(--color-primary-muted);
+  border-radius: 9999px;
+  filter: blur(8px);
+  top: -8px;
+  left: -8px;
+}
+
+.lamp__glow-2 {
+  position: absolute;
+  width: 32px;
+  height: 24px;
+  background: var(--color-primary-muted);
+  border-radius: 9999px;
+  filter: blur(8px);
+  top: -4px;
+}
+
+.lamp__glow-3 {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: var(--color-primary-muted);
+  border-radius: 9999px;
+  filter: blur(4px);
+  top: 0;
+  left: 8px;
+}

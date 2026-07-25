@@ -1,0 +1,177 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition:
+    background var(--duration-normal) var(--ease-out),
+    color var(--duration-normal) var(--ease-out),
+    border-color var(--duration-normal) var(--ease-out),
+    opacity var(--duration-normal) var(--ease-out);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn:disabled,
+.btn--loading {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn:disabled:active,
+.btn--loading:active {
+  transform: none;
+}
+
+/* ============================================
+   SIZES
+   ============================================ */
+.btn--sm {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.btn--md {
+  height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.btn--lg {
+  height: 44px;
+  padding: 0 18px;
+  font-size: 14px;
+}
+
+/* ============================================
+   VARIANTS
+   ============================================ */
+
+/* Primary */
+.btn--primary {
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+  border: 1px solid transparent;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.btn--primary:active:not(:disabled) {
+  background: var(--color-primary-active);
+}
+
+/* Secondary */
+.btn--secondary {
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-default);
+}
+
+.btn--secondary:hover:not(:disabled) {
+  background: var(--color-bg-overlay);
+  border-color: var(--color-border-emphasis);
+}
+
+/* Ghost */
+.btn--ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid transparent;
+}
+
+.btn--ghost:hover:not(:disabled) {
+  background: var(--color-bg-subtle);
+  color: var(--color-text-primary);
+}
+
+/* Destructive */
+.btn--destructive {
+  background: var(--color-danger-subtle);
+  color: var(--color-danger);
+  border: 1px solid transparent;
+}
+
+.btn--destructive:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--color-danger-hover);
+}
+
+/* Outline */
+.btn--outline {
+  background: transparent;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-emphasis);
+}
+
+.btn--outline:hover:not(:disabled) {
+  background: var(--color-bg-subtle);
+  border-color: var(--color-border-strong);
+}
+
+/* CTA (Saffron Orange — marketing pages) */
+.btn--cta {
+  background: var(--color-cta, #F97316);
+  color: var(--color-cta-foreground, #FFFFFF);
+  border: 1px solid transparent;
+  font-weight: 600;
+}
+
+.btn--cta:hover:not(:disabled) {
+  background: var(--color-cta-hover, #EA6A0A);
+}
+
+.btn--cta:active:not(:disabled) {
+  background: var(--color-cta-active, #D45F08);
+}
+
+/* ============================================
+   ICON-ONLY BUTTON
+   ============================================ */
+.btn--icon-only.btn--sm {
+  width: 28px;
+  padding: 0;
+}
+
+.btn--icon-only.btn--md {
+  width: 36px;
+  padding: 0;
+}
+
+.btn--icon-only.btn--lg {
+  width: 44px;
+  padding: 0;
+}
+
+/* ============================================
+   ICON SIZES
+   ============================================ */
+.btn__icon--sm {
+  width: 14px;
+  height: 14px;
+}
+
+.btn__icon--md {
+  width: 16px;
+  height: 16px;
+}
+
+.btn__icon--lg {
+  width: 18px;
+  height: 18px;
+}

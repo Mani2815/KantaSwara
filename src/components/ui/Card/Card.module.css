@@ -1,0 +1,51 @@
+.card {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.card--clickable {
+  cursor: pointer;
+  transition: background var(--duration-normal) var(--ease-out);
+}
+
+.card--clickable:hover {
+  background: var(--color-bg-overlay);
+}
+
+.card__header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card__title {
+  font-size: var(--text-heading-xs);
+  font-weight: 600;
+  font-family: var(--font-heading);
+  color: var(--color-text-primary);
+  flex: 1;
+}
+
+.card__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.card__body {
+  padding: 20px;
+}
+
+.card__body--compact {
+  padding: 12px 20px;
+}
+
+.card__footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-canvas);
+}

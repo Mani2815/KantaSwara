@@ -1,0 +1,103 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* ============================================
+   STATUS VARIANTS
+   ============================================ */
+.badge--active {
+  background: var(--color-call-active-glow);
+  color: var(--color-call-active);
+  border: 1px solid rgba(0, 185, 137, 0.3);
+}
+
+.badge--active .badge__dot {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.badge--completed {
+  background: rgba(86, 104, 130, 0.15);
+  color: var(--color-call-completed);
+  border: 1px solid rgba(86, 104, 130, 0.2);
+}
+
+.badge--failed {
+  background: var(--color-danger-subtle);
+  color: var(--color-danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.badge--queued {
+  background: var(--color-warning-subtle);
+  color: var(--color-warning);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.badge--voicemail {
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--raw-violet-500);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.badge--transferred {
+  background: var(--color-info-subtle);
+  color: var(--color-info);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.badge--success {
+  background: var(--color-success-subtle);
+  color: var(--color-success);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.badge--warning {
+  background: var(--color-warning-subtle);
+  color: var(--color-warning);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.badge--info {
+  background: var(--color-info-subtle);
+  color: var(--color-info);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.badge--danger {
+  background: var(--color-danger-subtle);
+  color: var(--color-danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.badge--neutral {
+  background: rgba(86, 104, 130, 0.15);
+  color: var(--color-text-secondary);
+  border: 1px solid rgba(86, 104, 130, 0.2);
+}
+
+/* ============================================
+   DOT INDICATOR
+   ============================================ */
+.badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}

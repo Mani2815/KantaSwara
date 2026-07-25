@@ -1,0 +1,1 @@
+export { TrustSection } from './TrustSection';

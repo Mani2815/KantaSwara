@@ -1,0 +1,1172 @@
+// =============================================================================
+// KantaSwara — Prisma Schema
+// =============================================================================
+// Used by: NestJS backend (runtime) + Prisma Migrate (schema management)
+// Database: PostgreSQL (Supabase)
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["public", "auth"]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum EmployeeRole {
+  SUPER_ADMIN
+  AI_SOLUTIONS_ADMIN
+  SUPPORT_ADMIN
+  FINANCE_ADMIN
+  @@schema("public")
+}
+
+enum EmployeeDepartment {
+  ENGINEERING
+  SUPPORT
+  SALES
+  LEADERSHIP
+  FINANCE
+  OPERATIONS
+  @@schema("public")
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  @@schema("public")
+}
+
+enum UserRole {
+  super_admin
+  solutions_admin
+  org_admin
+  manager
+  agent
+  viewer
+  @@schema("public")
+}
+
+enum AgentStatus {
+  active
+  inactive
+  draft
+  error
+  @@schema("public")
+}
+
+enum WorkflowStatus {
+  draft
+  published
+  archived
+  @@schema("public")
+}
+
+enum CallDirection {
+  inbound
+  outbound
+  @@schema("public")
+}
+
+enum CallOutcome {
+  completed
+  transferred
+  voicemail
+  abandoned
+  failed
+  @@schema("public")
+}
+
+enum LeadStatus {
+  new
+  contacted
+  qualified
+  converted
+  lost
+  @@schema("public")
+}
+
+enum AuditAction {
+  create
+  update
+  delete
+  login
+  logout
+  password_reset
+  role_change
+  settings_change
+  @@schema("public")
+}
+
+enum SubscriptionStatus {
+  active
+  past_due
+  canceled
+  suspended
+  @@schema("public")
+}
+
+enum InvoiceStatus {
+  draft
+  open
+  paid
+  overdue
+  void
+  uncollectible
+  @@schema("public")
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  partially_paid
+  overdue
+  failed
+  refunded
+  cancelled
+  @@schema("public")
+}
+
+enum QuotationStatus {
+  draft
+  sent
+  approved
+  rejected
+  expired
+  invoiced
+  @@schema("public")
+}
+
+enum ServiceStatus {
+  pending
+  in_progress
+  delivered
+  @@schema("public")
+}
+
+enum AddOnType {
+  ADDITIONAL_AGENT
+  ADDITIONAL_MINUTES
+  CRM_INTEGRATION
+  ERP_INTEGRATION
+  WHATSAPP_INTEGRATION
+  API_INTEGRATION
+  VOICE_CUSTOMIZATION
+  ADDITIONAL_LANGUAGE
+  CUSTOM_WORKFLOW
+  PROMPT_OPTIMIZATION
+  DEDICATED_TRAINING
+  PREMIUM_SUPPORT
+  @@schema("public")
+}
+
+enum AddOnBillingType {
+  ONE_TIME
+  RECURRING
+  @@schema("public")
+}
+
+enum AddOnStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+  @@schema("public")
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  @@schema("public")
+}
+
+enum DiscountScope {
+  SUBSCRIPTION
+  IMPLEMENTATION
+  ADDON
+  ALL
+  @@schema("public")
+}
+
+enum NotificationType {
+  QUOTATION_CREATED
+  QUOTATION_SENT
+  QUOTATION_APPROVED
+  QUOTATION_REJECTED
+  INVOICE_GENERATED
+  PAYMENT_RECEIVED
+  PAYMENT_FAILED
+  SUBSCRIPTION_EXPIRING
+  PLAN_UPGRADED
+  PLAN_DOWNGRADED
+  USAGE_LIMIT_REACHED
+  USAGE_LIMIT_WARNING
+  MINUTES_PURCHASED
+  RENEWAL_REMINDER
+  SUBSCRIPTION_SUSPENDED
+  @@schema("public")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Organization
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Organization {
+  id                 String    @id @default(uuid())
+  name               String
+  slug               String    @unique
+  logoUrl            String?   @map("logo_url")
+  plan               String    @default("free")
+  maxAgents          Int       @default(5) @map("max_agents")
+  maxConcurrentCalls Int       @default(10) @map("max_concurrent_calls")
+  stripeCustomerId   String?   @map("stripe_customer_id")
+  settings           Json      @default("{}")
+  status             String    @default("pending_approval")
+  approvalStatus     String    @default("pending") @map("approval_status")
+  approvedBy         String?   @map("approved_by")
+  approvedAt         DateTime? @map("approved_at")
+  rejectedAt         DateTime? @map("rejected_at")
+  rejectionReason    String?   @map("rejection_reason")
+  reviewNotes        String?   @map("review_notes")
+  reviewerId         String?   @map("reviewer_id")
+  activationDate     DateTime? @map("activation_date")
+
+  isActive  Boolean   @default(true) @map("is_active")
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  profiles       UserProfile[]
+  agents         Agent[]
+  workflows      Workflow[]
+  knowledgeBases KnowledgeBase[]
+  crmLeads       CRMLead[]
+  conversations  Conversation[]
+  analytics      Analytics[]
+  settings_rel   OrgSettings[]
+  auditLogs      AuditLog[]
+
+  // Billing Relations
+  subscription         OrganizationSubscription?
+  invoices             Invoice[]
+  quotations           Quotation[]
+  professionalServices ProfessionalService[]
+  voiceUsages          VoiceUsage[]
+  usageReports         UsageReport[]
+  usageRecords         UsageRecord[]
+  billingNotifications BillingNotification[]
+
+  @@map("organizations")
+  @@schema("public")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// User Profile (linked 1:1 to auth.users)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model UserProfile {
+  id             String    @id // Same as auth.users.id
+  organizationId String    @map("organization_id")
+  fullName       String    @map("full_name")
+  email          String    @unique
+  avatarUrl      String?   @map("avatar_url")
+  role           UserRole  @default(org_admin)
+  phone          String?
+  isActive       Boolean   @default(true) @map("is_active")
+  lastSeenAt     DateTime? @map("last_seen_at")
+  deletedAt      DateTime? @map("deleted_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id])
+  auditLogs    AuditLog[]
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("profiles")
+  @@schema("public")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Agent
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Agent {
+  id               String      @id @default(uuid())
+  organizationId   String      @map("organization_id")
+  name             String
+  description      String?
+  status           AgentStatus @default(draft)
+  workflowId       String?     @map("workflow_id")
+  voiceConfig      Json        @map("voice_config")
+  greeting         String
+  systemPrompt     String      @map("system_prompt") @db.Text
+  knowledgeBaseIds String[]    @map("knowledge_base_ids")
+  activeCalls      Int         @default(0) @map("active_calls")
+  totalCalls       Int         @default(0) @map("total_calls")
+  avgCallDuration  Float       @default(0) @map("avg_call_duration")
+  successRate      Float       @default(0) @map("success_rate")
+  deployedAt       DateTime?   @map("deployed_at")
+  deletedAt        DateTime?   @map("deleted_at")
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  workflow      Workflow?      @relation(fields: [workflowId], references: [id])
+  conversations Conversation[]
+  analytics     Analytics[]
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@map("agents")
+  @@schema("public")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Workflow
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Workflow {
+  id              String         @id @default(uuid())
+  organizationId  String         @map("organization_id")
+  name            String
+  description     String?
+  status          WorkflowStatus @default(draft)
+  contract        Json // WorkflowContract JSON
+  version         Int            @default(1)
+  lastPublishedAt DateTime?      @map("last_published_at")
+  deletedAt       DateTime?      @map("deleted_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id])
+  agents       Agent[]
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@map("workflows")
+  @@schema("public")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Knowledge Base
+// ─────────────────────────────────────────────────────────────────────────────
+
+model KnowledgeBase {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  name           String
+  description    String?
+  documentCount  Int       @default(0) @map("document_count")
+  totalSizeBytes BigInt    @default(0) @map("total_size_bytes")
+  deletedAt      DateTime? @map("deleted_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  documents    KnowledgeDocument[]
+
+  @@index([organizationId])
+  @@map("knowledge_bases")
+  @@schema("public")
+}
+
+model KnowledgeDocument {
+  id              String    @id @default(uuid())
+  knowledgeBaseId String    @map("knowledge_base_id")
+  organizationId  String    @map("organization_id")
+  name            String
+  mimeType        String    @map("mime_type")
+  sizeBytes       BigInt    @map("size_bytes")
+  storageKey      String    @map("storage_key")
+  status          String    @default("processing")
+  metadata        Json      @default("{}")
+  deletedAt       DateTime? @map("deleted_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  knowledgeBase KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id])
+
+  @@index([knowledgeBaseId])
+  @@index([organizationId])
+  @@map("knowledge_documents")
+  @@schema("public")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CRM Lead
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CRMLead {
+  id             String     @id @default(uuid())
+  organizationId String     @map("organization_id")
+  name           String
+  phone          String
+  email          String?
+  status         LeadStatus @default(new)
+  source         String?
+  notes          String?    @db.Text
+  metadata       Json       @default("{}")
+  deletedAt      DateTime?  @map("deleted_at")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  conversations Conversation[]
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([phone])
+  @@map("crm_leads")
+  @@schema("public")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Conversation (Call Record)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Conversation {
+  id              String        @id @default(uuid())
+  organizationId  String        @map("organization_id")
+  agentId         String        @map("agent_id")
+  leadId          String?       @map("lead_id")
+  direction       CallDirection
+  callerNumber    String        @map("caller_number")
+  callerName      String?       @map("caller_name")
+  status          String        @default("active")
+  startedAt       DateTime      @map("started_at")
+  endedAt         DateTime?     @map("ended_at")
+  durationSeconds Int           @default(0) @map("duration_seconds")
+  transcript      Json[]        @default([])
+  sentiment       String?
+  outcome         CallOutcome?
+  recordingUrl    String?       @map("recording_url")
+  metadata        Json          @default("{}")
+  deletedAt       DateTime?     @map("deleted_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id])
+  agent        Agent        @relation(fields: [agentId], references: [id])
+  lead         CRMLead?     @relation(fields: [leadId], references: [id])
+
+  @@index([organizationId])
+  @@index([organizationId, agentId])
+  @@index([organizationId, startedAt])
+  @@index([leadId])
+  @@map("conversations")
+  @@schema("public")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Analytics (daily aggregations)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Analytics {
+  id                 String   @id @default(uuid())
+  organizationId     String   @map("organization_id")
+  agentId            String?  @map("agent_id")
+  date               DateTime @db.Date
+  totalCalls         Int      @default(0) @map("total_calls")
+  answeredCalls      Int      @default(0) @map("answered_calls")
+  avgDurationSeconds Float    @default(0) @map("avg_duration_seconds")
+  successRate        Float    @default(0) @map("success_rate")
+  sentimentPositive  Int      @default(0) @map("sentiment_positive")
+  sentimentNeutral   Int      @default(0) @map("sentiment_neutral")
+  sentimentNegative  Int      @default(0) @map("sentiment_negative")
+  metadata           Json     @default("{}")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id])
+  agent        Agent?       @relation(fields: [agentId], references: [id])
+
+  @@unique([organizationId, agentId, date])
+  @@index([organizationId, date])
+  @@map("analytics")
+  @@schema("public")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Organization Settings
+// ─────────────────────────────────────────────────────────────────────────────
+
+model OrgSettings {
+  id             String   @id @default(uuid())
+  organizationId String   @unique @map("organization_id")
+  timezone       String   @default("UTC")
+  language       String   @default("en")
+  webhookUrl     String?  @map("webhook_url")
+  webhookSecret  String?  @map("webhook_secret")
+  customDomain   String?  @map("custom_domain")
+  branding       Json     @default("{}")
+  notifications  Json     @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("org_settings")
+  @@schema("public")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Audit Log (immutable — no updates, no soft delete)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id             String      @id @default(uuid())
+  organizationId String      @map("organization_id")
+  userId         String      @map("user_id")
+  action         AuditAction
+  resourceType   String      @map("resource_type")
+  resourceId     String?     @map("resource_id")
+  oldValues      Json?       @map("old_values")
+  newValues      Json?       @map("new_values")
+  ipAddress      String?     @map("ip_address")
+  userAgent      String?     @map("user_agent")
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         UserProfile  @relation(fields: [userId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([userId])
+  @@index([resourceType, resourceId])
+  @@map("audit_logs")
+  @@schema("public")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Billing & Subscriptions
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Discount {
+  id            String        @id @default(uuid())
+  code          String        @unique
+  description   String?
+  type          DiscountType
+  scope         DiscountScope
+  value         Decimal       @db.Decimal(10, 4)
+  maxUsages     Int?          @map("max_usages")
+  usageCount    Int           @default(0) @map("usage_count")
+  validFrom     DateTime      @map("valid_from")
+  validUntil    DateTime?     @map("valid_until")
+  isActive      Boolean       @default(true) @map("is_active")
+  approvedBy    String?       @map("approved_by")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  subscriptions OrganizationSubscription[]
+  quotations    Quotation[]
+
+  @@map("discounts")
+  @@schema("public")
+}
+
+model TaxConfiguration {
+  id          String   @id @default(uuid())
+  name        String
+  rate        Decimal  @db.Decimal(6, 4)
+  description String?
+  isDefault   Boolean  @default(false) @map("is_default")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("tax_configurations")
+  @@schema("public")
+}
+
+model AddOn {
+  id          String           @id @default(uuid())
+  name        String
+  code        String           @unique
+  description String?
+  type        AddOnType
+  billingType AddOnBillingType @map("billing_type")
+  unitPrice   Decimal          @map("unit_price") @db.Decimal(12, 2)
+  unit        String
+  taxable     Boolean          @default(true)
+  isActive    Boolean          @default(true) @map("is_active")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  subscriptionAddOns SubscriptionAddOn[]
+  quotationItems     QuotationItem[]
+
+  @@map("add_ons")
+  @@schema("public")
+}
+
+model SubscriptionPlan {
+  id                String   @id @default(uuid())
+  name              String   @unique
+  displayName       String   @map("display_name")
+  description       String?
+  priceMonthly      Decimal  @map("price_monthly") @db.Decimal(12, 2)
+  implementationFee Decimal  @map("implementation_fee") @db.Decimal(12, 2)
+  maxAgents         Int      @map("max_agents")
+  includedMinutes   Int      @map("included_minutes")
+  maxTeamMembers    Int      @map("max_team_members")
+  storageLimitGB    Int      @map("storage_limit_gb")
+  apiRateLimit      Int      @map("api_rate_limit")
+  supportLevel      String   @map("support_level")
+  overageRatePerMin Decimal  @map("overage_rate_per_min") @db.Decimal(8, 4)
+  hasSLA            Boolean  @default(false) @map("has_sla")
+  hasDedicatedInfra Boolean  @default(false) @map("has_dedicated_infra")
+  hasWhiteLabel     Boolean  @default(false) @map("has_white_label")
+  isCustom          Boolean  @default(false) @map("is_custom")
+  isActive          Boolean  @default(true) @map("is_active")
+  displayOrder      Int      @default(0) @map("display_order")
+  features          Json     @default("[]")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  organizations OrganizationSubscription[]
+  quotations    Quotation[]
+
+  @@map("subscription_plans")
+  @@schema("public")
+}
+
+model OrganizationSubscription {
+  id                 String             @id @default(uuid())
+  organizationId     String             @unique @map("organization_id")
+  planId             String             @map("plan_id")
+  status             SubscriptionStatus @default(active)
+  currentPeriodStart DateTime           @map("current_period_start")
+  currentPeriodEnd   DateTime           @map("current_period_end")
+  renewalDate        DateTime           @map("renewal_date")
+  cancelAtPeriodEnd  Boolean            @default(false) @map("cancel_at_period_end")
+  canceledAt         DateTime?          @map("canceled_at")
+  suspendedAt        DateTime?          @map("suspended_at")
+  suspensionReason   String?            @map("suspension_reason")
+  customMinutes      Int?               @map("custom_minutes")
+  customMonthlyPrice Decimal?           @map("custom_monthly_price") @db.Decimal(12, 2)
+  discountId         String?            @map("discount_id")
+  notes              String?
+  createdBy          String?            @map("created_by")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  plan         SubscriptionPlan    @relation(fields: [planId], references: [id])
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  discount     Discount?           @relation(fields: [discountId], references: [id])
+  renewalLogs  RenewalHistory[]
+  addOns       SubscriptionAddOn[]
+
+  @@map("organization_subscriptions")
+  @@schema("public")
+}
+
+model SubscriptionAddOn {
+  id             String          @id @default(uuid())
+  subscriptionId String          @map("subscription_id")
+  addOnId        String          @map("add_on_id")
+  quantity       Int             @default(1)
+  unitPrice      Decimal         @map("unit_price") @db.Decimal(12, 2)
+  status         AddOnStatus     @default(ACTIVE)
+  activatedAt    DateTime?       @map("activated_at")
+  expiresAt      DateTime?       @map("expires_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  subscription OrganizationSubscription @relation(fields: [subscriptionId], references: [id])
+  addOn        AddOn                    @relation(fields: [addOnId], references: [id])
+
+  @@index([subscriptionId])
+  @@map("subscription_add_ons")
+  @@schema("public")
+}
+
+model RenewalHistory {
+  id             String   @id @default(uuid())
+  subscriptionId String   @map("subscription_id")
+  planId         String   @map("plan_id")
+  periodStart    DateTime @map("period_start")
+  periodEnd      DateTime @map("period_end")
+  amount         Decimal  @db.Decimal(12, 2)
+  invoiceId      String?  @map("invoice_id")
+  status         String
+  renewedAt      DateTime @default(now()) @map("renewed_at")
+
+  subscription OrganizationSubscription @relation(fields: [subscriptionId], references: [id])
+
+  @@index([subscriptionId])
+  @@map("renewal_history")
+  @@schema("public")
+}
+
+model Quotation {
+  id                  String          @id @default(uuid())
+  quotationNumber     String          @unique @map("quotation_number")
+  organizationId      String          @map("organization_id")
+  agentRequestId      String?         @map("agent_request_id")
+  planId              String?         @map("plan_id")
+  title               String
+  description         String?         @db.Text
+  type                String
+  implementationFee   Decimal?        @map("implementation_fee") @db.Decimal(12, 2)
+  subscriptionMonthly Decimal?        @map("subscription_monthly") @db.Decimal(12, 2)
+  subtotal            Decimal         @db.Decimal(12, 2)
+  discountId          String?         @map("discount_id")
+  discountAmount      Decimal         @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  taxAmount           Decimal         @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  totalAmount         Decimal         @map("total_amount") @db.Decimal(12, 2)
+  validUntil          DateTime        @map("valid_until")
+  status              QuotationStatus @default(draft)
+  sentAt              DateTime?       @map("sent_at")
+  approvedAt          DateTime?       @map("approved_at")
+  rejectedAt          DateTime?       @map("rejected_at")
+  rejectionReason     String?         @map("rejection_reason")
+  invoiceId           String?         @map("invoice_id")
+  notes               String?         @db.Text
+  internalNotes       String?         @map("internal_notes") @db.Text
+  createdBy           String?         @map("created_by")
+  approvedBy          String?         @map("approved_by")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  plan         SubscriptionPlan? @relation(fields: [planId], references: [id])
+  discount     Discount?       @relation(fields: [discountId], references: [id])
+  items        QuotationItem[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@map("quotations")
+  @@schema("public")
+}
+
+model QuotationItem {
+  id          String   @id @default(uuid())
+  quotationId String   @map("quotation_id")
+  addOnId     String?  @map("add_on_id")
+  description String
+  quantity    Decimal  @db.Decimal(10, 2)
+  unitPrice   Decimal  @map("unit_price") @db.Decimal(12, 2)
+  amount      Decimal  @db.Decimal(12, 2)
+  type        String
+  taxable     Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  quotation Quotation @relation(fields: [quotationId], references: [id])
+  addOn     AddOn?    @relation(fields: [addOnId], references: [id])
+
+  @@index([quotationId])
+  @@map("quotation_items")
+  @@schema("public")
+}
+
+model Invoice {
+  id                 String        @id @default(uuid())
+  invoiceNumber      String        @unique @map("invoice_number")
+  organizationId     String        @map("organization_id")
+  quotationId        String?       @map("quotation_id")
+  subscriptionId     String?       @map("subscription_id")
+  type               String
+  billingPeriodStart DateTime?     @map("billing_period_start")
+  billingPeriodEnd   DateTime?     @map("billing_period_end")
+  subtotal           Decimal       @db.Decimal(12, 2)
+  discountAmount     Decimal       @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  taxAmount          Decimal       @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  totalAmount        Decimal       @map("total_amount") @db.Decimal(12, 2)
+  paidAmount         Decimal       @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  balanceDue         Decimal       @map("balance_due") @db.Decimal(12, 2)
+  status             InvoiceStatus @default(draft)
+  paymentStatus      PaymentStatus @default(pending) @map("payment_status")
+  dueDate            DateTime      @map("due_date")
+  notes              String?       @db.Text
+  internalNotes      String?       @map("internal_notes") @db.Text
+  createdBy          String?       @map("created_by")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  items        InvoiceItem[]
+  payments     Payment[]
+  organization Organization  @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([paymentStatus])
+  @@index([dueDate])
+  @@map("invoices")
+  @@schema("public")
+}
+
+model InvoiceItem {
+  id          String   @id @default(uuid())
+  invoiceId   String   @map("invoice_id")
+  description String
+  quantity    Decimal  @db.Decimal(10, 2)
+  unitPrice   Decimal  @map("unit_price") @db.Decimal(12, 2)
+  amount      Decimal  @db.Decimal(12, 2)
+  type        String
+  taxable     Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@index([invoiceId])
+  @@map("invoice_items")
+  @@schema("public")
+}
+
+model Payment {
+  id              String        @id @default(uuid())
+  invoiceId       String        @map("invoice_id")
+  amount          Decimal       @db.Decimal(12, 2)
+  paymentDate     DateTime      @map("payment_date")
+  paymentMethod   String        @map("payment_method")
+  transactionId   String?       @map("transaction_id")
+  referenceNumber String?       @map("reference_number")
+  status          PaymentStatus @default(pending)
+  verifiedBy      String?       @map("verified_by")
+  verifiedAt      DateTime?     @map("verified_at")
+  notes           String?       @db.Text
+  createdBy       String        @map("created_by")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@index([invoiceId])
+  @@map("payments")
+  @@schema("public")
+}
+
+model ProfessionalService {
+  id             String        @id @default(uuid())
+  organizationId String        @map("organization_id")
+  quotationId    String        @map("quotation_id")
+  serviceType    String        @map("service_type")
+  status         ServiceStatus @default(pending)
+  description    String?       @db.Text
+  deliveredAt    DateTime?     @map("delivered_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("professional_services")
+  @@schema("public")
+}
+
+model VoiceUsage {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  agentId          String   @map("agent_id")
+  callId           String   @map("call_id")
+  type             String
+  durationSeconds  Int      @map("duration_seconds")
+  sttUsage         Int?     @map("stt_usage")
+  ttsUsage         Int?     @map("tts_usage")
+  llmTokens        Int?     @map("llm_tokens")
+  providerCost     Decimal? @map("provider_cost") @db.Decimal(12, 6)
+  billedToCustomer Decimal? @map("billed_to_customer") @db.Decimal(12, 2)
+  timestamp        DateTime
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, timestamp])
+  @@map("voice_usages")
+  @@schema("public")
+}
+
+model UsageRecord {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  agentId        String?  @map("agent_id")
+  callId         String?  @map("call_id")
+  type           String
+  durationSeconds Int?    @map("duration_seconds")
+  quantity       Decimal  @default(1) @db.Decimal(12, 4)
+  unit           String
+  billingMonth   DateTime @map("billing_month") @db.Date
+  isBilled       Boolean  @default(false) @map("is_billed")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, billingMonth])
+  @@index([organizationId, isBilled])
+  @@map("usage_records")
+  @@schema("public")
+}
+
+model UsageReport {
+  id                 String    @id @default(uuid())
+  organizationId     String    @map("organization_id")
+  billingMonth       DateTime  @map("billing_month") @db.Date
+  billingPeriodStart DateTime  @map("billing_period_start")
+  billingPeriodEnd   DateTime  @map("billing_period_end")
+  inboundCalls       Int       @default(0) @map("inbound_calls")
+  outboundCalls      Int       @default(0) @map("outbound_calls")
+  totalCalls         Int       @default(0) @map("total_calls")
+  totalMinutes       Int       @default(0) @map("total_minutes")
+  includedMinutes    Int       @map("included_minutes")
+  overageMinutes     Int       @default(0) @map("overage_minutes")
+  overageRatePerMin  Decimal   @map("overage_rate_per_min") @db.Decimal(8, 4)
+  overageCharge      Decimal   @default(0) @map("overage_charge") @db.Decimal(12, 2)
+  storageUsedGB      Decimal   @default(0) @map("storage_used_gb") @db.Decimal(10, 4)
+  apiRequests        Int       @default(0) @map("api_requests")
+  activeAgents       Int       @default(0) @map("active_agents")
+  recordingsCount    Int       @default(0) @map("recordings_count")
+  status             String    @default("aggregating")
+  invoiceId          String?   @map("invoice_id")
+  finalizedAt        DateTime? @map("finalized_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, billingMonth])
+  @@index([organizationId, billingPeriodStart])
+  @@map("usage_reports")
+  @@schema("public")
+}
+
+model BillingNotification {
+  id             String           @id @default(uuid())
+  organizationId String?          @map("organization_id")
+  type           NotificationType
+  title          String
+  body           String           @db.Text
+  metadata       Json             @default("{}")
+  sentAt         DateTime?        @map("sent_at")
+  readAt         DateTime?        @map("read_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("billing_notifications")
+  @@schema("public")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI Solutions Delivery Console (Internal Implementations)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AgentRequest {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  domain         String
+  priority       String   @default("medium")
+  status         String   @default("pending_review")
+  requirements   Json     @default("{}")
+  assignedTo     String?  @map("assigned_to")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([organizationId])
+  @@index([status])
+  @@map("agent_requests")
+  @@schema("public")
+}
+
+model AgentProject {
+  id             String   @id @default(uuid())
+  requestId      String   @unique @map("request_id")
+  organizationId String   @map("organization_id")
+  assignedTo     String?  @map("assigned_to")
+  status         String   @default("in_development")
+  completionPct  Int      @default(0) @map("completion_pct")
+  milestones     Json     @default("[]")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([organizationId])
+  @@index([status])
+  @@map("agent_projects")
+  @@schema("public")
+}
+
+model AgentConfiguration {
+  id        String @id @default(uuid())
+  projectId String @map("project_id")
+  name      String
+  purpose   String
+  version   Int    @default(1)
+
+  promptId    String? @map("prompt_id")
+  workflowId  String? @map("workflow_id")
+  voiceId     String? @map("voice_id")
+  knowledgeId String? @map("knowledge_id")
+
+  @@index([projectId])
+  @@map("agent_configurations")
+  @@schema("public")
+}
+
+model PromptConfiguration {
+  id             String @id @default(uuid())
+  systemPrompt   String @map("system_prompt") @db.Text
+  greetingPrompt String @map("greeting_prompt") @db.Text
+  fallbackPrompt String @map("fallback_prompt") @db.Text
+  variables      Json   @default("{}")
+  version        Int    @default(1)
+
+  @@map("prompt_configurations")
+  @@schema("public")
+}
+
+model WorkflowConfiguration {
+  id            String @id @default(uuid())
+  decisionNodes Json   @default("[]") @map("decision_nodes")
+  integrations  Json   @default("[]")
+  version       Int    @default(1)
+
+  @@map("workflow_configurations")
+  @@schema("public")
+}
+
+model VoiceConfiguration {
+  id       String @id @default(uuid())
+  provider String
+  model    String
+  language String
+  accent   String
+  tone     String
+  speed    Float  @default(1.0)
+
+  @@map("voice_configurations")
+  @@schema("public")
+}
+
+model KnowledgeConfiguration {
+  id          String @id @default(uuid())
+  sources     Json   @default("[]")
+  indexStatus String @default("pending") @map("index_status")
+
+  @@map("knowledge_configurations")
+  @@schema("public")
+}
+
+model QAReview {
+  id         String   @id @default(uuid())
+  projectId  String   @map("project_id")
+  reviewerId String   @map("reviewer_id")
+  status     String
+  checklist  Json     @default("{}")
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([projectId])
+  @@map("qa_reviews")
+  @@schema("public")
+}
+
+model Deployment {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  version     Int
+  environment String
+  deployedBy  String   @map("deployed_by")
+  status      String
+  deployedAt  DateTime @default(now()) @map("deployed_at")
+
+  @@index([projectId, environment])
+  @@map("deployments")
+  @@schema("public")
+}
+
+model AgentAssignment {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  deploymentId   String   @map("deployment_id")
+  assignedAt     DateTime @default(now()) @map("assigned_at")
+  status         String   @default("active")
+
+  @@index([organizationId])
+  @@map("agent_assignments")
+  @@schema("public")
+}
+
+model ChangeRequest {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  assignmentId   String   @map("assignment_id")
+  category       String
+  priority       String   @default("medium")
+  status         String   @default("pending")
+  details        String   @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([organizationId])
+  @@index([assignmentId])
+  @@map("change_requests")
+  @@schema("public")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Internal KantaSwara Employees
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Employee {
+  id               String             @id @default(uuid())
+  fullName         String             @map("full_name")
+  email            String             @unique
+  role             EmployeeRole
+  department       EmployeeDepartment
+  status           EmployeeStatus     @default(ACTIVE)
+  invitationStatus String?            @map("invitation_status") // PENDING, ACCEPTED, EXPIRED
+  lastLoginAt      DateTime?          @map("last_login_at")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  auditLogs        EmployeeAuditLog[]
+
+  @@map("employees")
+  @@schema("public")
+}
+
+model EmployeeInvitation {
+  id         String             @id @default(uuid())
+  email      String             @unique
+  fullName   String             @map("full_name")
+  department EmployeeDepartment
+  role       EmployeeRole
+  token      String             @unique
+  expiresAt  DateTime           @map("expires_at")
+  notes      String?            @db.Text
+  invitedBy  String             @map("invited_by")
+  createdAt  DateTime           @default(now()) @map("created_at")
+
+  @@map("employee_invitations")
+  @@schema("public")
+}
+
+model EmployeeAuditLog {
+  id             String    @id @default(uuid())
+  employeeId     String    @map("employee_id")
+  action         String
+  ipAddress      String?   @map("ip_address")
+  userAgent      String?   @map("user_agent")
+  targetId       String?   @map("target_id")
+  previousValue  Json?     @map("previous_value")
+  newValue       Json?     @map("new_value")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  employee       Employee  @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId, createdAt])
+  @@map("employee_audit_logs")
+  @@schema("public")
+}

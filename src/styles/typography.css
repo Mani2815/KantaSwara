@@ -1,0 +1,97 @@
+/* ============================================
+   KANTASWARA TYPOGRAPHY SYSTEM
+   Fraunces (display/heading), Plus Jakarta Sans (body),
+   JetBrains Mono (monospace)
+   ============================================ */
+
+/* ============================================
+   GOOGLE FONTS — Fraunces & Plus Jakarta Sans
+   ============================================ */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&display=swap');
+
+/* ============================================
+   SELF-HOSTED FALLBACK FONT FACES
+   ============================================ */
+@font-face {
+  font-family: 'Mona Sans';
+  src: url('/fonts/MonaSans-Variable.woff2') format('woff2-variations');
+  font-weight: 200 900;
+  font-stretch: 75% 125%;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Variable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono-Variable.woff2') format('woff2-variations');
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ============================================
+   FONT FAMILY VARIABLES
+   ============================================ */
+:root {
+  --font-display: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body:    'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono:    'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Monaco', monospace;
+}
+
+/* ============================================
+   TYPE SCALE
+   Base unit: 4px
+   Custom scale for operational UI granularity
+   ============================================ */
+:root {
+  /* Display (Fraunces, marketing use) */
+  --text-display-2xl: 96px;
+  --text-display-xl:  72px;
+  --text-display-lg:  56px;
+
+  /* Headings (Fraunces, UI use) */
+  --text-heading-xl:  28px;
+  --text-heading-lg:  24px;
+  --text-heading-md:  20px;
+  --text-heading-sm:  16px;
+  --text-heading-xs:  14px;
+
+  /* Body (Plus Jakarta Sans) */
+  --text-body-lg:     18px;
+  --text-body-md:     16px;
+  --text-body-sm:     14px;
+  --text-body-xs:     12px;
+
+  /* Mono (JetBrains Mono) */
+  --text-mono-md:     14px;
+  --text-mono-sm:     12px;
+  --text-mono-xs:     11px;
+
+  /* Line Heights */
+  --leading-none:     1.0;
+  --leading-tight:    1.1;
+  --leading-snug:     1.2;
+  --leading-normal:   1.5;
+  --leading-relaxed:  1.6;
+  --leading-loose:    1.7;
+  --leading-mono:     1.6;
+
+  /* Letter Spacing */
+  --tracking-tighter: -0.03em;
+  --tracking-tight:   -0.02em;
+  --tracking-snug:    -0.01em;
+  --tracking-normal:   0;
+  --tracking-wide:     0.04em;
+  --tracking-wider:    0.08em;
+  --tracking-widest:   0.12em;
+}
