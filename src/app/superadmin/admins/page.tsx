@@ -2,6 +2,7 @@ import React from 'react';
 import { supabaseAdmin } from '@server/lib/supabase/admin';
 import { ShieldCheck, Rocket, MoreVertical } from 'lucide-react';
 import { CreateAdminForm } from './CreateAdminForm';
+import { AdminRowActions } from './AdminRowActions';
 
 export const metadata = {
   title: 'Internal Admins — KantaSwara Super Admin',
@@ -43,7 +44,7 @@ export default async function AdminsPage() {
         
         {/* Left Col: Admin List */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl">
             <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Active Accounts</h2>
             </div>
@@ -84,12 +85,10 @@ export default async function AdminsPage() {
                       )}
                     </td>
                     <td className="px-5 py-4 text-sm text-zinc-500 dark:text-zinc-400">
-                      {new Date(admin.created_at).toLocaleDateString()}
+                      {new Date(admin.created_at).toISOString().split('T')[0]}
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <button className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">
-                        <MoreVertical size={18} />
-                      </button>
+                      <AdminRowActions adminId={admin.id} currentRole={admin.role} />
                     </td>
                   </tr>
                 ))}

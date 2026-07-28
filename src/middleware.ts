@@ -52,11 +52,30 @@ export async function middleware(request: NextRequest) {
   }
 
   // Handle Authenticated Users
-  const userType = user.app_metadata?.user_type; // 'INTERNAL' or 'EXTERNAL'
+  let isEmployee = user.app_metadata?.is_employee === true || 
+                   user.app_metadata?.is_employee === 'true' || 
+                   user.app_metadata?.user_type === 'INTERNAL';
+                   
+  let employeeRole = user.app_metadata?.employee_role;
+  let employeeStatus = user.app_metadata?.employee_status || user.app_metadata?.account_status;
 
-  if (userType === 'INTERNAL') {
-    const employeeRole = user.app_metadata?.employee_role;
-    const employeeStatus = user.app_metadata?.account_status;
+  // Fallback if JWT hook hasn't populated employee data (e.g. stale token)
+  if (!isEmployee && (user.app_metadata?.is_employee === undefined && user.app_metadata?.user_type === undefined)) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profile && ['super_admin', 'solutions_admin', 'support_admin'].includes(profile.role)) {
+      isEmployee = true;
+      employeeRole = profile.role === 'super_admin' ? 'SUPER_ADMIN' : 
+                     profile.role === 'solutions_admin' ? 'AI_SOLUTIONS_ADMIN' : 'SUPPORT_ADMIN';
+      employeeStatus = 'ACTIVE';
+    }
+  }
+
+  if (isEmployee) {
 
     if (employeeStatus !== 'ACTIVE') {
       if (!isInternalAuthRoute) {

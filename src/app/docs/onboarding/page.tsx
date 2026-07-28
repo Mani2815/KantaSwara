@@ -1,34 +1,40 @@
-export default function OnboardingPage() {
+export default function RegisterOrganizationPage() {
   return (
     <article className="max-w-none space-y-6 text-neutral-800 dark:text-neutral-200">
-      <h1 className="text-4xl font-bold mb-4 mt-0 text-neutral-900 dark:text-white">Organization Onboarding</h1>
+      <h1 className="text-4xl font-bold mb-4 mt-0 text-neutral-900 dark:text-white">Register Organization</h1>
       <p className="text-lg text-neutral-600 dark:text-neutral-400">
         Follow these steps to register your organization and gain access to the KantaSwara platform.
       </p>
 
-      <h2 className="text-2xl font-semibold mt-10 mb-4 text-neutral-900 dark:text-white">1. Register Organization</h2>
+      <h2 className="text-2xl font-semibold mt-10 mb-4 text-neutral-900 dark:text-white">1. Create an Account</h2>
       <p className="leading-relaxed">
-        Navigate to the registration page and fill out your account and business profile details. This information helps our team understand your use case before assigning resources.
+        Navigate to the registration page and fill out your account details. You must provide a valid corporate email address. Personal email addresses (like @gmail.com or @yahoo.com) may require additional verification or may be rejected.
       </p>
       
-      <h2 className="text-2xl font-semibold mt-10 mb-4 text-neutral-900 dark:text-white">2. Email Verification</h2>
+      <h2 className="text-2xl font-semibold mt-10 mb-4 text-neutral-900 dark:text-white">2. Business Profile Details</h2>
       <p className="leading-relaxed">
-        After registration, you will receive an email containing a verification link. Click the link to verify your email address. If you used Google Authentication, this step is skipped.
+        During registration, you will be asked to provide your organization's name, industry, and a brief description of your intended use case. This information helps the AI Solutions Team prepare for your onboarding call.
       </p>
 
-      <h2 className="text-2xl font-semibold mt-10 mb-4 text-neutral-900 dark:text-white">3. Approval Process</h2>
+      <h2 className="text-2xl font-semibold mt-10 mb-4 text-neutral-900 dark:text-white">3. Email Verification</h2>
       <p className="leading-relaxed">
-        Because KantaSwara is a managed service, all new organization accounts undergo a manual review process. This typically takes 1-2 business days.
+        After submitting the form, you will receive an email containing a verification link. Click the link to verify your email address. If you used Google Authentication or GitHub to sign up, this step is automatically skipped.
       </p>
+      
+      <h2 className="text-2xl font-semibold mt-10 mb-4 text-neutral-900 dark:text-white">4. Pending Approval Status</h2>
+      <p className="leading-relaxed">
+        Once your email is verified, your account enters the "Pending Approval" state. Because KantaSwara is a managed service, we manually review every new organization to ensure fit and capacity.
+      </p>
+
       <div className="my-8 p-4 bg-orange-50 dark:bg-orange-500/10 border-l-4 border-orange-500 rounded-r-lg">
         <p className="m-0 text-orange-800 dark:text-orange-200">
-          <strong>Important:</strong> You cannot access the main dashboard until a Superadmin has approved your registration. You will be notified via email once approved.
+          <strong>Note:</strong> While in the pending state, you cannot access the main dashboard. You will receive an email notification as soon as a KantaSwara Superadmin approves your organization.
         </p>
       </div>
-
-      <h2 className="text-2xl font-semibold mt-10 mb-4 text-neutral-900 dark:text-white">4. Account Activation</h2>
+      
+      <h2 className="text-2xl font-semibold mt-10 mb-4 text-neutral-900 dark:text-white">5. First Login & Team Invitations</h2>
       <p className="leading-relaxed">
-        Once approved, your account is activated and you can log in to the dashboard to begin submitting AI Agent requirements.
+        Upon approval, log in to access the Organization Dashboard. As the creator, you are automatically assigned the 'Admin' role. You can immediately begin inviting other team members from the Settings tab.
       </p>
     </article>
   );

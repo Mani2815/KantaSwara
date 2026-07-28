@@ -33,9 +33,22 @@ const DOCS_NAVIGATION = [
   {
     title: 'Dashboard Guides',
     links: [
-      { href: '/docs/dashboard', label: 'Dashboard Overview' },
-      { href: '/docs/dashboard/knowledge-base', label: 'Knowledge Base' },
-      { href: '/docs/dashboard/calls-analytics', label: 'Calls & Analytics' },
+      { href: '/docs/dashboard', label: 'Organization Dashboard' },
+      { href: '/docs/dashboard/ai-solutions', label: 'AI Solutions Dashboard' },
+      { href: '/docs/dashboard/super-admin', label: 'Super Admin Dashboard' },
+    ],
+  },
+  {
+    title: 'Core Features',
+    links: [
+      { href: '/docs/knowledge-base', label: 'Knowledge Base' },
+      { href: '/docs/calls-analytics', label: 'Calls & Analytics' },
+    ],
+  },
+  {
+    title: 'Integrations',
+    links: [
+      { href: '/docs/integrations', label: 'Integrations Overview' },
     ],
   },
   {
@@ -43,7 +56,20 @@ const DOCS_NAVIGATION = [
     links: [
       { href: '/docs/api-reference', label: 'Overview & Authentication' },
       { href: '/docs/api-reference/organizations', label: 'Organizations API' },
+      { href: '/docs/api-reference/agent-requests', label: 'Agent Requests API' },
+      { href: '/docs/api-reference/knowledge-base', label: 'Knowledge Base API' },
       { href: '/docs/api-reference/calls', label: 'Calls API' },
+      { href: '/docs/api-reference/analytics', label: 'Analytics API' },
+      { href: '/docs/api-reference/billing', label: 'Billing API' },
+    ],
+  },
+  {
+    title: 'Platform & Support',
+    links: [
+      { href: '/docs/platform/security', label: 'Security' },
+      { href: '/docs/platform/billing', label: 'Billing' },
+      { href: '/docs/support', label: 'Support' },
+      { href: '/docs/release-notes', label: 'Release Notes' },
     ],
   },
 ];
