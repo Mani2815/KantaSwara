@@ -111,7 +111,7 @@ function RegisterPageContent() {
         setServerError(result.error);
         return;
       }
-      router.push('/register/pending-approval');
+      router.push('/pending-approval');
       return;
     }
 
@@ -137,7 +137,7 @@ function RegisterPageContent() {
           organization_name: organizationName,
           business_profile: businessProfile
         },
-        emailRedirectTo: `${window.location.origin}/register/pending-approval`,
+        emailRedirectTo: `${window.location.origin}/pending-approval`,
       },
     });
     setLoading(false);
@@ -149,7 +149,7 @@ function RegisterPageContent() {
 
     // For email/password signups with email confirmations enabled, they might need to verify their email.
     // However, they can also go directly to the pending approval page if the app handles it.
-    router.push('/register/pending-approval');
+    router.push('/pending-approval');
   };
 
   return (

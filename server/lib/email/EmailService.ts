@@ -20,6 +20,7 @@ import type {
   EmailPayload,
   RenderedEmail,
 } from './types';
+import { prisma } from '../prisma';
 
 export class EmailService {
   /**
@@ -51,6 +52,63 @@ export class EmailService {
       });
       await EmailLogger.markFailed(logId, `Invalid email: ${msg}`);
       return { success: false, emailLogId: logId, status: 'FAILED', error: msg };
+    }
+
+    // 1.a Bounce Protection
+    try {
+      const hasBounced = await prisma.emailLog.findFirst({
+        where: {
+          recipient: toEmail,
+          status: 'BOUNCED',
+        },
+      });
+
+      if (hasBounced) {
+        const logId = await EmailLogger.createLog({
+          recipient: toEmail,
+          recipientName: toName,
+          subject: options.subject,
+          templateKey: options.templateKey,
+          category: options.category,
+          priority: options.priority,
+          organizationId: options.organizationId,
+          triggeredBy: options.triggeredBy,
+          triggeredByEvent: options.triggeredByEvent,
+          variables: options.variables,
+        });
+        await EmailLogger.markSkipped(logId, 'Recipient has previously bounced');
+        return { success: false, emailLogId: logId, status: 'SKIPPED', skipped: true, skipReason: 'Recipient bounced' };
+      }
+    } catch (err) {
+      console.error('[EmailService] Bounce protection lookup failed:', err);
+    }
+
+    // 1.b Idempotency / Duplicate Protection
+    if (options.triggeredByEvent) {
+      try {
+        const recentSend = await prisma.emailLog.findFirst({
+          where: {
+            recipient: toEmail,
+            triggeredByEvent: options.triggeredByEvent,
+            templateKey: options.templateKey,
+            createdAt: {
+              gte: new Date(Date.now() - 5 * 60 * 1000), // last 5 minutes
+            },
+          },
+        });
+
+        if (recentSend) {
+          return {
+            success: true, // Treat as success to not block upstream
+            emailLogId: recentSend.id,
+            status: 'SKIPPED',
+            skipped: true,
+            skipReason: 'Duplicate send prevented (idempotency)',
+          };
+        }
+      } catch (err) {
+        console.error('[EmailService] Idempotency lookup failed:', err);
+      }
     }
 
     // 2. Check user email preferences (if userId is in variables)

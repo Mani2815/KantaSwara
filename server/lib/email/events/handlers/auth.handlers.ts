@@ -12,6 +12,9 @@ import type {
   LoginAlertEvent,
   AccountLockedEvent,
   EmployeeInvitedEvent,
+  EmployeeActivatedEvent,
+  EmployeePasswordResetEvent,
+  EmployeeRoleChangedEvent,
 } from '../../types';
 
 export function registerAuthHandlers(bus: EmailEventBus): void {
@@ -135,6 +138,57 @@ export function registerAuthHandlers(bus: EmailEventBus): void {
         invitationLink: payload.invitationLink,
         invitedByName: payload.invitedByName,
         expiresAt: payload.expiresAt,
+      },
+    });
+  });
+
+  bus.on('EmployeeActivated', async (payload: EmployeeActivatedEvent) => {
+    await emailService.sendTemplate({
+      to: { email: payload.email, name: payload.name },
+      subject: 'Your KantaSwara employee account is active',
+      templateKey: 'employee-activated',
+      category: 'EMPLOYEE',
+      priority: 'HIGH',
+      bypassPreferences: true,
+      triggeredByEvent: 'EmployeeActivated',
+      variables: {
+        userName: payload.name,
+        role: payload.role,
+        dashboardUrl: payload.dashboardUrl,
+      },
+    });
+  });
+
+  bus.on('EmployeePasswordReset', async (payload: EmployeePasswordResetEvent) => {
+    await emailService.sendTemplate({
+      to: { email: payload.email, name: payload.name },
+      subject: 'Reset your internal employee password',
+      templateKey: 'employee-password-reset',
+      category: 'EMPLOYEE',
+      priority: 'CRITICAL',
+      bypassPreferences: true,
+      triggeredByEvent: 'EmployeePasswordReset',
+      variables: {
+        userName: payload.name,
+        resetLink: payload.resetLink,
+        expiresIn: payload.expiresIn,
+      },
+    });
+  });
+
+  bus.on('EmployeeRoleChanged', async (payload: EmployeeRoleChangedEvent) => {
+    await emailService.sendTemplate({
+      to: { email: payload.email, name: payload.name },
+      subject: 'Your employee role has been updated',
+      templateKey: 'employee-role-changed',
+      category: 'EMPLOYEE',
+      priority: 'HIGH',
+      bypassPreferences: true,
+      triggeredByEvent: 'EmployeeRoleChanged',
+      variables: {
+        userName: payload.name,
+        newRole: payload.newRole,
+        dashboardUrl: payload.dashboardUrl,
       },
     });
   });

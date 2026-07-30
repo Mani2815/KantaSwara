@@ -156,6 +156,42 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
         '@/components/emails/employee/EmployeeInvitationEmail'
       ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
   },
+  'employee-activated': {
+    key: 'employee-activated',
+    name: 'Employee Activated',
+    description: 'Notifies employee their account is active',
+    category: 'EMPLOYEE',
+    subject: 'Your KantaSwara employee account is active',
+    isMandatory: true,
+    component: () =>
+      import(
+        '@/components/emails/employee/EmployeeActivatedEmail'
+      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+  'employee-password-reset': {
+    key: 'employee-password-reset',
+    name: 'Employee Password Reset',
+    description: 'Password reset link for employees',
+    category: 'EMPLOYEE',
+    subject: 'Reset your internal employee password',
+    isMandatory: true,
+    component: () =>
+      import(
+        '@/components/emails/employee/EmployeePasswordResetEmail'
+      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+  'employee-role-changed': {
+    key: 'employee-role-changed',
+    name: 'Employee Role Changed',
+    description: 'Notifies employee of a role change',
+    category: 'EMPLOYEE',
+    subject: 'Your employee role has been updated',
+    isMandatory: true,
+    component: () =>
+      import(
+        '@/components/emails/employee/EmployeeRoleChangedEmail'
+      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
 
   // ── Billing ───────────────────────────────────────────────────────────────
   'billing-subscription-created': {
@@ -281,6 +317,80 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
       ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
   },
 
+  // ── AI Builder ────────────────────────────────────────────────────────────
+  'builder-draft-saved': {
+    key: 'builder-draft-saved',
+    name: 'Draft Saved',
+    description: 'Notifies user that their draft is saved',
+    category: 'AI_BUILDER' as EmailCategory,
+    subject: 'Draft saved: {{agentName}}',
+    isMandatory: false,
+    component: () =>
+      import(
+        '@/components/emails/builder/DraftSavedEmail'
+      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+  'builder-validation-passed': {
+    key: 'builder-validation-passed',
+    name: 'Validation Passed',
+    description: 'Agent validation checks passed',
+    category: 'AI_BUILDER' as EmailCategory,
+    subject: 'Validation passed for {{agentName}}',
+    isMandatory: false,
+    component: () =>
+      import(
+        '@/components/emails/builder/ValidationPassedEmail'
+      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+  'builder-validation-failed': {
+    key: 'builder-validation-failed',
+    name: 'Validation Failed',
+    description: 'Agent validation checks failed',
+    category: 'AI_BUILDER' as EmailCategory,
+    subject: 'Action required: Validation failed for {{agentName}}',
+    isMandatory: true,
+    component: () =>
+      import(
+        '@/components/emails/builder/ValidationFailedEmail'
+      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+  'builder-agent-published': {
+    key: 'builder-agent-published',
+    name: 'Agent Published',
+    description: 'Agent published successfully',
+    category: 'AI_BUILDER' as EmailCategory,
+    subject: 'Agent published: {{agentName}}',
+    isMandatory: false,
+    component: () =>
+      import(
+        '@/components/emails/builder/AgentPublishedEmail'
+      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+  'builder-deployment-started': {
+    key: 'builder-deployment-started',
+    name: 'Deployment Started',
+    description: 'Agent deployment started',
+    category: 'AI_BUILDER' as EmailCategory,
+    subject: 'Deployment started for {{agentName}}',
+    isMandatory: false,
+    component: () =>
+      import(
+        '@/components/emails/builder/DeploymentStartedEmail'
+      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+  'builder-rollback-completed': {
+    key: 'builder-rollback-completed',
+    name: 'Rollback Completed',
+    description: 'Agent rollback completed',
+    category: 'AI_BUILDER' as EmailCategory,
+    subject: 'Rollback completed for {{agentName}}',
+    isMandatory: false,
+    component: () =>
+      import(
+        '@/components/emails/builder/RollbackCompletedEmail'
+      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+
   // ── Security ──────────────────────────────────────────────────────────────
   'security-suspicious-login': {
     key: 'security-suspicious-login',
@@ -304,6 +414,42 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/security/APIKeyCreatedEmail'
+      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+  'security-api-key-revoked': {
+    key: 'security-api-key-revoked',
+    name: 'API Key Revoked',
+    description: 'Confirms API key revocation',
+    category: 'SECURITY',
+    subject: 'API Key revoked: {{keyName}}',
+    isMandatory: true,
+    component: () =>
+      import(
+        '@/components/emails/security/APIKeyRevokedEmail'
+      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+  'security-mfa-enabled': {
+    key: 'security-mfa-enabled',
+    name: 'MFA Enabled',
+    description: 'Confirms MFA was enabled',
+    category: 'SECURITY',
+    subject: 'Multi-Factor Authentication enabled',
+    isMandatory: true,
+    component: () =>
+      import(
+        '@/components/emails/security/MFAEnabledEmail'
+      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+  'security-mfa-disabled': {
+    key: 'security-mfa-disabled',
+    name: 'MFA Disabled',
+    description: 'Alerts user MFA was disabled',
+    category: 'SECURITY',
+    subject: '⚠️ Multi-Factor Authentication disabled',
+    isMandatory: true,
+    component: () =>
+      import(
+        '@/components/emails/security/MFADisabledEmail'
       ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
   },
 
@@ -331,6 +477,130 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
       import(
         '@/components/emails/notifications/MaintenanceNoticeEmail'
       ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+
+  // ── Support ───────────────────────────────────────────────────────────────
+  'support-ticket-created': {
+    key: 'support-ticket-created',
+    name: 'Ticket Created',
+    description: 'Confirms support ticket creation',
+    category: 'SUPPORT' as EmailCategory,
+    subject: 'Support Ticket Created: #{{ticketId}}',
+    isMandatory: false,
+    component: () =>
+      import(
+        '@/components/emails/support/TicketCreatedEmail'
+      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+  'support-ticket-assigned': {
+    key: 'support-ticket-assigned',
+    name: 'Ticket Assigned',
+    description: 'Notifies agent of assigned ticket',
+    category: 'SUPPORT' as EmailCategory,
+    subject: 'Ticket Assigned: #{{ticketId}}',
+    isMandatory: false,
+    component: () =>
+      import(
+        '@/components/emails/support/TicketAssignedEmail'
+      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+  'support-ticket-updated': {
+    key: 'support-ticket-updated',
+    name: 'Ticket Updated',
+    description: 'Notifies customer of ticket status update',
+    category: 'SUPPORT' as EmailCategory,
+    subject: 'Ticket Update: #{{ticketId}}',
+    isMandatory: false,
+    component: () =>
+      import(
+        '@/components/emails/support/TicketUpdatedEmail'
+      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+  'support-ticket-closed': {
+    key: 'support-ticket-closed',
+    name: 'Ticket Closed',
+    description: 'Notifies customer ticket is closed',
+    category: 'SUPPORT' as EmailCategory,
+    subject: 'Ticket Closed: #{{ticketId}}',
+    isMandatory: false,
+    component: () =>
+      import(
+        '@/components/emails/support/TicketClosedEmail'
+      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+  'support-customer-reply': {
+    key: 'support-customer-reply',
+    name: 'Customer Reply',
+    description: 'Notifies agent of customer reply',
+    category: 'SUPPORT' as EmailCategory,
+    subject: 'New Reply: #{{ticketId}}',
+    isMandatory: false,
+    component: () =>
+      import(
+        '@/components/emails/support/CustomerReplyEmail'
+      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+  'support-internal-reply': {
+    key: 'support-internal-reply',
+    name: 'Internal Reply',
+    description: 'Notifies customer of support reply',
+    category: 'SUPPORT' as EmailCategory,
+    subject: 'Support Reply: #{{ticketId}}',
+    isMandatory: false,
+    component: () =>
+      import(
+        '@/components/emails/support/InternalReplyEmail'
+      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+
+  // ── Demo ──────────────────────────────────────────────────────────────────
+  'demo-summary': {
+    key: 'demo-summary',
+    name: 'Demo Completed Summary',
+    description: 'Summary of the demo',
+    category: 'DEMO' as EmailCategory,
+    subject: 'Your KantaSwara Demo Summary',
+    isMandatory: false,
+    component: () =>
+      import(
+        '@/components/emails/demo/DemoCompletedSummaryEmail'
+      ) as unknown as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+  'demo-contact-sales': {
+    key: 'demo-contact-sales',
+    name: 'Contact Sales',
+    description: 'Sales contact confirmation',
+    category: 'DEMO' as EmailCategory,
+    subject: "We've received your request",
+    isMandatory: false,
+    component: () =>
+      import(
+        '@/components/emails/demo/ContactSalesFollowupEmail'
+      ) as unknown as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+  'demo-meeting-confirmation': {
+    key: 'demo-meeting-confirmation',
+    name: 'Demo Meeting Confirmed',
+    description: 'Confirms demo meeting time',
+    category: 'DEMO' as EmailCategory,
+    subject: 'Demo Meeting Confirmed',
+    isMandatory: false,
+    component: () =>
+      import(
+        '@/components/emails/demo/DemoMeetingConfirmationEmail'
+      ) as unknown as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+  },
+  'demo-trial-invitation': {
+    key: 'demo-trial-invitation',
+    name: 'Trial Invitation',
+    description: 'Invites user to trial after demo',
+    category: 'DEMO' as EmailCategory,
+    subject: 'Exclusive Trial Invitation 🎁',
+    isMandatory: false,
+    component: () =>
+      import(
+        '@/components/emails/demo/TrialInvitationEmail'
+      ) as unknown as Promise<{ default: ComponentType<Record<string, unknown>> }>,
   },
 };
 

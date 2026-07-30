@@ -58,6 +58,11 @@ export function getEmailConfig(): EmailConfig {
   return _config;
 }
 
+export function initEmailConfig(): void {
+  // Eagerly validate config on startup to throw fast if keys are missing
+  getEmailConfig();
+}
+
 // Rate limiting defaults
 export const EMAIL_RATE_LIMITS = {
   perOrgPerHour: 500,

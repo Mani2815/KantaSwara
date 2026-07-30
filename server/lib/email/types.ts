@@ -145,6 +145,24 @@ export type EmployeeInvitedEvent = {
   invitedByName: string;
   expiresAt: string;
 };
+export type EmployeeActivatedEvent = {
+  email: string;
+  name: string;
+  role: string;
+  dashboardUrl: string;
+};
+export type EmployeePasswordResetEvent = {
+  email: string;
+  name: string;
+  resetLink: string;
+  expiresIn: string;
+};
+export type EmployeeRoleChangedEvent = {
+  email: string;
+  name: string;
+  newRole: string;
+  dashboardUrl: string;
+};
 
 // Organization Events
 export type OrganizationRegisteredEvent = {
@@ -232,6 +250,52 @@ export type TrialEndingEvent = {
   upgradeUrl: string;
 };
 
+// AI Builder Events
+export type AgentDraftSavedEvent = {
+  email: string;
+  name: string;
+  agentName: string;
+  projectName: string;
+  builderUrl: string;
+};
+export type AgentValidationPassedEvent = {
+  email: string;
+  name: string;
+  agentName: string;
+  projectName: string;
+  dashboardUrl: string;
+};
+export type AgentValidationFailedEvent = {
+  email: string;
+  name: string;
+  agentName: string;
+  projectName: string;
+  errors: string[];
+  builderUrl: string;
+};
+export type AgentPublishedEvent = {
+  email: string;
+  name: string;
+  agentName: string;
+  projectName: string;
+  dashboardUrl: string;
+};
+export type DeploymentStartedEvent = {
+  email: string;
+  name: string;
+  agentName: string;
+  environment: string;
+  deploymentUrl: string;
+};
+export type RollbackCompletedEvent = {
+  email: string;
+  name: string;
+  agentName: string;
+  environment: string;
+  version: string;
+  dashboardUrl: string;
+};
+
 // Delivery Events
 export type ProjectAssignedEvent = {
   projectId: string;
@@ -272,6 +336,79 @@ export type QAApprovedEvent = {
   reviewerName: string;
 };
 
+// Support Events
+export type TicketCreatedEvent = {
+  email: string;
+  name: string;
+  ticketId: string;
+  subject: string;
+  ticketUrl: string;
+};
+export type TicketAssignedEvent = {
+  email: string;
+  assigneeName: string;
+  ticketId: string;
+  subject: string;
+  priority: string;
+  ticketUrl: string;
+};
+export type TicketUpdatedEvent = {
+  email: string;
+  name: string;
+  ticketId: string;
+  subject: string;
+  status: string;
+  ticketUrl: string;
+};
+export type TicketClosedEvent = {
+  email: string;
+  name: string;
+  ticketId: string;
+  subject: string;
+  ticketUrl: string;
+};
+export type CustomerReplyEvent = {
+  email: string;
+  assigneeName: string;
+  ticketId: string;
+  subject: string;
+  replySnippet: string;
+  ticketUrl: string;
+};
+export type InternalReplyEvent = {
+  email: string;
+  name: string;
+  ticketId: string;
+  subject: string;
+  replySnippet: string;
+  ticketUrl: string;
+};
+
+// Demo Events
+export type DemoCompletedEvent = {
+  email: string;
+  name: string;
+  summary: string;
+};
+export type ContactSalesEvent = {
+  email: string;
+  name: string;
+  salesEmail: string;
+};
+export type DemoMeetingConfirmedEvent = {
+  email: string;
+  name: string;
+  meetingTime: string;
+  meetingLink: string;
+  hostName: string;
+};
+export type TrialInvitationEvent = {
+  email: string;
+  name: string;
+  trialLink: string;
+  days: number;
+};
+
 // Security Events
 export type SuspiciousLoginEvent = {
   email: string;
@@ -295,8 +432,8 @@ export type APIKeyRevokedEvent = {
   keyName: string;
   revokedAt: string;
 };
-export type MFAEnabledEvent = { email: string; name: string };
-export type MFADisabledEvent = { email: string; name: string };
+export type MFAEnabledEvent = { email: string; name: string; settingsUrl: string; };
+export type MFADisabledEvent = { email: string; name: string; settingsUrl: string; };
 
 // Notification Events
 export type AnnouncementPublishedEvent = {
@@ -325,6 +462,9 @@ export interface EmailEventMap {
   LoginAlert: LoginAlertEvent;
   AccountLocked: AccountLockedEvent;
   EmployeeInvited: EmployeeInvitedEvent;
+  EmployeeActivated: EmployeeActivatedEvent;
+  EmployeePasswordReset: EmployeePasswordResetEvent;
+  EmployeeRoleChanged: EmployeeRoleChangedEvent;
   // Organization
   OrganizationRegistered: OrganizationRegisteredEvent;
   OrganizationApproved: OrganizationApprovedEvent;
@@ -342,6 +482,25 @@ export interface EmailEventMap {
   DeploymentCompleted: DeploymentCompletedEvent;
   DeploymentFailed: DeploymentFailedEvent;
   QAApproved: QAApprovedEvent;
+  // Builder
+  AgentDraftSaved: AgentDraftSavedEvent;
+  AgentValidationPassed: AgentValidationPassedEvent;
+  AgentValidationFailed: AgentValidationFailedEvent;
+  AgentPublished: AgentPublishedEvent;
+  DeploymentStarted: DeploymentStartedEvent;
+  RollbackCompleted: RollbackCompletedEvent;
+  // Support
+  TicketCreated: TicketCreatedEvent;
+  TicketAssigned: TicketAssignedEvent;
+  TicketUpdated: TicketUpdatedEvent;
+  TicketClosed: TicketClosedEvent;
+  CustomerReply: CustomerReplyEvent;
+  InternalReply: InternalReplyEvent;
+  // Demo
+  DemoCompleted: DemoCompletedEvent;
+  ContactSales: ContactSalesEvent;
+  DemoMeetingConfirmed: DemoMeetingConfirmedEvent;
+  TrialInvitation: TrialInvitationEvent;
   // Security
   SuspiciousLogin: SuspiciousLoginEvent;
   APIKeyCreated: APIKeyCreatedEvent;

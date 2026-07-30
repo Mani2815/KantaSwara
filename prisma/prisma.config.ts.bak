@@ -1,0 +1,39 @@
+import { defineConfig } from 'prisma/config';
+import * as fs from 'fs';
+import * as path from 'path';
+
+function getDbUrl(): string {
+  if (process.env.DIRECT_URL) return process.env.DIRECT_URL;
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+
+  const envPath = path.resolve(__dirname, '../.env.local');
+  if (fs.existsSync(envPath)) {
+    const content = fs.readFileSync(envPath, 'utf8');
+    for (const line of content.split('\n')) {
+      if (line.startsWith('DIRECT_URL=')) {
+        let val = line.substring('DIRECT_URL='.length).trim();
+        if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
+        return val;
+      }
+      if (line.startsWith('DATABASE_URL=')) {
+        let val = line.substring('DATABASE_URL='.length).trim();
+        if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
+        return val;
+      }
+    }
+  }
+  return "postgresql://postgres.ciuhnizodmmxbagtlxrj:*ryPXb&@S.pz2HP@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres";
+}
+
+const dbUrl = getDbUrl();
+
+export default defineConfig({
+  earlyAccess: true,
+  schema: {
+    kind: 'single',
+    filePath: 'prisma/schema.prisma',
+  },
+  datasource: {
+    url: dbUrl,
+  },
+});

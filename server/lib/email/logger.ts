@@ -37,44 +37,54 @@ export class EmailLogger {
    * Creates an initial QUEUED log entry and returns the log ID.
    */
   static async createLog(params: CreateLogParams): Promise<string> {
-    const log = await prisma.emailLog.create({
-      data: {
-        recipient: params.recipient,
-        recipientName: params.recipientName,
-        subject: params.subject,
-        templateKey: params.templateKey,
-        category: params.category ?? 'NOTIFICATION',
-        priority: params.priority ?? 'NORMAL',
-        organizationId: params.organizationId,
-        triggeredBy: params.triggeredBy ?? 'system',
-        triggeredByEvent: params.triggeredByEvent,
-        variables: params.variables
-          ? JSON.parse(JSON.stringify(params.variables))
-          : {},
-        status: 'QUEUED',
-      },
-    });
-    return log.id;
+    try {
+      const log = await prisma.emailLog.create({
+        data: {
+          recipient: params.recipient,
+          recipientName: params.recipientName,
+          subject: params.subject,
+          templateKey: params.templateKey,
+          category: params.category ?? 'NOTIFICATION',
+          priority: params.priority ?? 'NORMAL',
+          organizationId: params.organizationId,
+          triggeredBy: params.triggeredBy ?? 'system',
+          triggeredByEvent: params.triggeredByEvent,
+          variables: params.variables
+            ? JSON.parse(JSON.stringify(params.variables))
+            : {},
+          status: 'QUEUED',
+        },
+      });
+      return log.id;
+    } catch (error) {
+      console.error('[EmailLogger] Failed to create log in database:', error);
+      return `fallback-log-${Date.now()}`;
+    }
   }
 
   /**
    * Updates an existing log entry with the send result.
    */
   static async updateLog(id: string, params: UpdateLogParams): Promise<void> {
-    await prisma.emailLog.update({
-      where: { id },
-      data: {
-        status: params.status,
-        providerId: params.providerId,
-        providerResponse: params.providerResponse
-          ? JSON.parse(JSON.stringify(params.providerResponse))
-          : undefined,
-        errorMessage: params.errorMessage,
-        sentAt: params.sentAt,
-        failedAt: params.failedAt,
-        retryCount: params.retryCount,
-      },
-    });
+    if (id.startsWith('fallback-log-')) return;
+    try {
+      await prisma.emailLog.update({
+        where: { id },
+        data: {
+          status: params.status,
+          providerId: params.providerId,
+          providerResponse: params.providerResponse
+            ? JSON.parse(JSON.stringify(params.providerResponse))
+            : undefined,
+          errorMessage: params.errorMessage,
+          sentAt: params.sentAt,
+          failedAt: params.failedAt,
+          retryCount: params.retryCount,
+        },
+      });
+    } catch (error) {
+      console.error(`[EmailLogger] Failed to update log ${id} in database:`, error);
+    }
   }
 
   /**
