@@ -1,12 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Settings, FileText, Bot, MessageSquare, Workflow, Database, 
   Mic, Plug, Variable, PlayCircle, ClipboardCheck, Rocket, 
-  Building, History, Clock, Users, Save, CheckCircle2, ChevronLeft
+  Building, History, Clock, Users, Save, CheckCircle2, ChevronLeft, Loader2
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { apiClient } from '@/services/api';
+import { toast } from 'sonner';
 
 // Tab Definitions
 const BUILDER_TABS = [
@@ -30,11 +33,125 @@ const BUILDER_TABS = [
 
 export default function AgentBuilderPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = React.use(params);
+  const router = useRouter();
+  
   const [activeTab, setActiveTab] = useState('overview');
-
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [data, setData] = useState<any>(null);
+  
   const isNew = unwrappedParams.id === 'new';
-  const agentName = isNew ? 'Untitled Agent' : 'Acme Support Bot';
-  const orgName = isNew ? 'Unassigned' : 'Acme Corp';
+
+  useEffect(() => {
+    if (isNew) {
+      setData({
+        overview: { name: 'Untitled Agent', description: '', status: 'draft', active_version: 'v0.0.1-draft', org_name: 'Unassigned', project_id: 'Unassigned' },
+        agent: { language: 'en-US', fallback_behavior: 'escalate', call_timeout_seconds: 3600, max_conversation_duration: 7200, welcome_message: '' },
+        prompts: { system_prompt: '' },
+        workflow: {},
+        voice: { provider: 'elevenlabs', speed: 1.0, pitch: 1.0, interrupt_handling: true },
+        integrations: {},
+        variables: [],
+        validation: {},
+        deployment: {},
+        versions: []
+      });
+      setIsLoading(false);
+    } else {
+      loadData();
+    }
+  }, [unwrappedParams.id, isNew]);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const res = await apiClient.get<{ data: any }>(`/builder/agents/${unwrappedParams.id}`);
+      setData(res.data);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to load agent configuration');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (!data) return;
+    setIsSaving(true);
+    try {
+      let payloadData = data[activeTab] || {};
+      if (activeTab === 'overview') {
+         payloadData = { name: data.overview?.name, description: data.overview?.description };
+      }
+      
+      if (isNew) {
+         const createRes = await apiClient.post<{ data: { id: string } }>('/builder/agents', { name: data.overview?.name || 'Untitled Agent' });
+         const newId = createRes.data.id;
+         await apiClient.patch(`/builder/agents/${newId}`, { tab: activeTab, data: payloadData });
+         toast.success('Agent created and draft saved');
+         router.replace(`/delivery-console/builder/${newId}`);
+      } else {
+         await apiClient.patch(`/builder/agents/${unwrappedParams.id}`, { tab: activeTab, data: payloadData });
+         toast.success('Draft saved successfully');
+         setIsSaving(false);
+      }
+    } catch (err: any) {
+      toast.error('Failed to save draft');
+      setIsSaving(false);
+    }
+  };
+
+  const handleValidate = async () => {
+    try {
+      const res = await apiClient.post<{ data: any }>(`/builder/agents/${unwrappedParams.id}/validate`);
+      setData({ ...data, validation: res.data });
+      toast.success(`Validation completed. Score: ${res.data.score}`);
+    } catch (err: any) {
+      toast.error('Validation failed');
+    }
+  };
+
+  const handlePublish = async () => {
+    try {
+      await apiClient.post(`/builder/agents/${unwrappedParams.id}/publish`);
+      toast.success('Agent published successfully');
+      loadData();
+    } catch (err: any) {
+      toast.error('Publish failed');
+    }
+  };
+
+  const handleDeploy = async () => {
+    try {
+      await apiClient.post(`/builder/agents/${unwrappedParams.id}/deploy`, { environment: 'production' });
+      toast.success('Deployment initiated');
+      loadData();
+    } catch (err: any) {
+      toast.error('Deployment failed');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-64px)] bg-[var(--color-bg-base)]">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="animate-spin text-indigo-500" size={32} />
+          <p className="text-sm text-[var(--color-text-muted)]">Loading Agent Workspace...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-64px)] bg-[var(--color-bg-base)]">
+        <h2 className="text-xl font-bold text-[var(--color-text-primary)]">Agent Not Found</h2>
+        <p className="text-sm text-[var(--color-text-secondary)] mt-2">The requested agent could not be found or failed to load.</p>
+        <button onClick={() => router.push('/delivery-console/builder')} className="mt-4 px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm">Return to Builder</button>
+      </div>
+    );
+  }
+
+  const { overview = {}, agent = {}, prompts = {}, workflow = {}, voice = {}, integrations = {}, variables = [], validation = {}, deployment = {}, versions = [] } = data || {};
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] bg-[var(--color-bg-base)]">
@@ -46,27 +163,31 @@ export default function AgentBuilderPage({ params }: { params: Promise<{ id: str
           </Link>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-lg font-bold text-[var(--color-text-primary)] leading-tight">{agentName}</h1>
-              <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20">DRAFT</span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono text-[var(--color-text-muted)] bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)]">{isNew ? 'v0.0.1-draft' : 'v1.0.0-draft'}</span>
+              <h1 className="text-lg font-bold text-[var(--color-text-primary)] leading-tight">{overview.name || 'Untitled Agent'}</h1>
+              <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20">{overview.status?.toUpperCase() || 'DRAFT'}</span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono text-[var(--color-text-muted)] bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)]">{overview.active_version || 'v0.0.1-draft'}</span>
             </div>
             <div className="text-xs text-[var(--color-text-muted)] mt-0.5 flex items-center gap-2">
-              <span>Project: {isNew ? 'New' : unwrappedParams.id}</span>
+              <span>Project: {overview.project_id || 'Unassigned'}</span>
               <span>•</span>
-              <span>{orgName}</span>
+              <span>{overview.org_name || 'Unassigned'}</span>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-bg-base)] border border-[var(--color-border-default)] text-sm font-medium text-[var(--color-text-primary)] rounded-lg hover:bg-[var(--color-bg-subtle)] transition-colors">
-            <Save size={16} />
+          <button onClick={handleSaveDraft} disabled={isSaving} className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-bg-base)] border border-[var(--color-border-default)] text-sm font-medium text-[var(--color-text-primary)] rounded-lg hover:bg-[var(--color-bg-subtle)] transition-colors disabled:opacity-50">
+            {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
             Save Draft
           </button>
-          <button className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 text-sm font-medium rounded-lg hover:bg-indigo-500/20 transition-colors">
+          <button onClick={handleValidate} className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 text-sm font-medium rounded-lg hover:bg-indigo-500/20 transition-colors">
             <CheckCircle2 size={16} />
             Validate
           </button>
-          <button className="flex items-center gap-2 px-4 py-1.5 bg-[#ff6600] text-white text-sm font-medium rounded-lg hover:bg-[#e65c00] transition-colors shadow-sm">
+          <button onClick={handlePublish} className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-bg-base)] border border-[var(--color-border-default)] text-sm font-medium text-[var(--color-text-primary)] rounded-lg hover:bg-[var(--color-bg-subtle)] transition-colors">
+            <ClipboardCheck size={16} />
+            Publish
+          </button>
+          <button onClick={handleDeploy} className="flex items-center gap-2 px-4 py-1.5 bg-[#ff6600] text-white text-sm font-medium rounded-lg hover:bg-[#e65c00] transition-colors shadow-sm">
             <Rocket size={16} />
             Deploy
           </button>
@@ -112,56 +233,50 @@ export default function AgentBuilderPage({ params }: { params: Promise<{ id: str
             
             {activeTab === 'overview' && (
               <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border-default)] shadow-sm rounded-2xl p-5">
                     <h3 className="text-[var(--color-text-secondary)] text-xs font-semibold uppercase tracking-wider mb-1">Organization</h3>
-                    <span className="text-lg font-bold text-[var(--color-text-primary)]">Acme Corp</span>
+                    <span className="text-lg font-bold text-[var(--color-text-primary)] truncate block">{overview.org_name || 'Unassigned'}</span>
                   </div>
                   <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border-default)] shadow-sm rounded-2xl p-5">
-                    <h3 className="text-[var(--color-text-secondary)] text-xs font-semibold uppercase tracking-wider mb-1">Assigned Engineer</h3>
-                    <span className="text-lg font-bold text-[var(--color-text-primary)]">Alice Chen</span>
+                    <h3 className="text-[var(--color-text-secondary)] text-xs font-semibold uppercase tracking-wider mb-1">Current Status</h3>
+                    <span className="text-lg font-bold text-[var(--color-text-primary)] capitalize">{overview.status || 'Active'}</span>
                   </div>
                   <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border-default)] shadow-sm rounded-2xl p-5">
-                    <h3 className="text-[var(--color-text-secondary)] text-xs font-semibold uppercase tracking-wider mb-1">Target Launch</h3>
-                    <span className="text-lg font-bold text-emerald-500">Oct 24, 2026</span>
+                    <h3 className="text-[var(--color-text-secondary)] text-xs font-semibold uppercase tracking-wider mb-1">Last Deployment</h3>
+                    <span className={`text-lg font-bold ${overview.last_deployment ? 'text-emerald-500' : 'text-[var(--color-text-muted)]'}`}>
+                      {overview.last_deployment?.created_at ? new Date(overview.last_deployment.created_at).toLocaleDateString() : 'Never'}
+                    </span>
+                  </div>
+                  <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border-default)] shadow-sm rounded-2xl p-5">
+                    <h3 className="text-[var(--color-text-secondary)] text-xs font-semibold uppercase tracking-wider mb-1">Validation Score</h3>
+                    <span className={`text-lg font-bold ${validation?.checklist?.score === 100 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                      {validation?.checklist?.score !== undefined ? `${validation.checklist.score}/100` : 'Not Validated'}
+                    </span>
                   </div>
                 </div>
 
                 <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border-default)] shadow-sm rounded-2xl p-6">
-                  <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">Project Meta</h2>
-                  <div className="grid grid-cols-2 gap-y-4 text-sm">
-                    <div><span className="text-[var(--color-text-muted)] block">Agent Name</span><span className="font-medium">Acme Support Bot</span></div>
-                    <div><span className="text-[var(--color-text-muted)] block">Business Domain</span><span className="font-medium">HVAC Maintenance</span></div>
-                    <div><span className="text-[var(--color-text-muted)] block">Priority</span><span className="font-medium text-[#ff6600]">High</span></div>
-                    <div><span className="text-[var(--color-text-muted)] block">Customer Contact</span><span className="font-medium">j.doe@acme.corp</span></div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'requirements' && (
-              <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border-default)] shadow-sm rounded-2xl p-6 space-y-6">
-                <div>
-                  <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-2">Primary Use Case</h2>
-                  <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">
-                    Outbound voice agent for scheduling HVAC maintenance appointments. The agent needs to call existing customers whose maintenance contracts are due for renewal, qualify their availability, and book an appointment directly into our ServiceTitan calendar.
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[var(--color-border-default)]">
-                  <div>
-                    <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-2">Business Rules</h2>
-                    <ul className="list-disc pl-4 text-sm text-[var(--color-text-secondary)] space-y-1">
-                      <li>Only schedule between 9 AM and 5 PM EST.</li>
-                      <li>Never offer discounts unless explicitly asked.</li>
-                      <li>Escalate to human if customer is angry.</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-2">Technical Constraints</h2>
-                    <ul className="list-disc pl-4 text-sm text-[var(--color-text-secondary)] space-y-1">
-                      <li>Integrate with ServiceTitan via API.</li>
-                      <li>English (US) only for v1.0.</li>
-                    </ul>
+                  <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">Agent Identity (Editable)</h2>
+                  <div className="grid grid-cols-1 gap-y-4 text-sm">
+                    <div>
+                      <label className="text-[var(--color-text-muted)] block mb-1">Agent Name</label>
+                      <input 
+                        type="text" 
+                        value={overview.name || ''} 
+                        onChange={e => setData((prev: any) => ({...prev, overview: {...prev?.overview, name: e.target.value}}))}
+                        className="w-full bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-lg px-3 py-2 text-[var(--color-text-primary)] focus:border-indigo-500 focus:outline-none" 
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[var(--color-text-muted)] block mb-1">Description</label>
+                      <textarea 
+                        rows={3}
+                        value={overview.description || ''} 
+                        onChange={e => setData((prev: any) => ({...prev, overview: {...prev?.overview, description: e.target.value}}))}
+                        className="w-full bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-lg px-3 py-2 text-[var(--color-text-primary)] focus:border-indigo-500 focus:outline-none resize-none" 
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -173,40 +288,57 @@ export default function AgentBuilderPage({ params }: { params: Promise<{ id: str
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Internal Agent Name</label>
-                    <input type="text" defaultValue="Acme Support Bot" className="w-full bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[#ff6600]" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Customer Display Name</label>
-                    <input type="text" defaultValue="Acme Virtual Assistant" className="w-full bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[#ff6600]" />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Agent Description</label>
-                  <textarea rows={3} defaultValue="Handles inbound scheduling and triage." className="w-full bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[#ff6600] resize-none" />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-[var(--color-border-default)]">
-                  <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Default Language</label>
-                    <select className="w-full bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[#ff6600]">
-                      <option>English (US)</option>
-                      <option>Spanish (ES)</option>
+                    <select 
+                      value={agent.language || 'en-US'}
+                      onChange={e => setData((prev: any) => ({...prev, agent: {...prev?.agent, language: e.target.value}}))}
+                      className="w-full bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[#ff6600]"
+                    >
+                      <option value="en-US">English (US)</option>
+                      <option value="es-ES">Spanish (ES)</option>
+                      <option value="fr-FR">French (FR)</option>
                     </select>
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Fallback Behavior</label>
-                    <select className="w-full bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[#ff6600]">
-                      <option>Transfer to Human</option>
-                      <option>Disconnect Call</option>
-                      <option>Play Voicemail</option>
+                    <select 
+                      value={agent.fallback_behavior || 'escalate'}
+                      onChange={e => setData((prev: any) => ({...prev, agent: {...prev?.agent, fallback_behavior: e.target.value}}))}
+                      className="w-full bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[#ff6600]"
+                    >
+                      <option value="escalate">Transfer to Human</option>
+                      <option value="disconnect">Disconnect Call</option>
+                      <option value="voicemail">Play Voicemail</option>
                     </select>
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Call Timeout (s)</label>
-                    <input type="number" defaultValue="3600" className="w-full bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[#ff6600]" />
+                    <input 
+                      type="number" 
+                      value={agent.call_timeout_seconds || 3600}
+                      onChange={e => setData((prev: any) => ({...prev, agent: {...prev?.agent, call_timeout_seconds: parseInt(e.target.value)}}))}
+                      className="w-full bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[#ff6600]" 
+                    />
                   </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Max Duration (s)</label>
+                    <input 
+                      type="number" 
+                      value={agent.max_conversation_duration || 7200}
+                      onChange={e => setData((prev: any) => ({...prev, agent: {...prev?.agent, max_conversation_duration: parseInt(e.target.value)}}))}
+                      className="w-full bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[#ff6600]" 
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Welcome Message</label>
+                  <textarea 
+                    rows={3} 
+                    value={agent.welcome_message || ''}
+                    onChange={e => setData((prev: any) => ({...prev, agent: {...prev?.agent, welcome_message: e.target.value}}))}
+                    className="w-full bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[#ff6600] resize-none" 
+                  />
                 </div>
               </div>
             )}
@@ -223,37 +355,13 @@ export default function AgentBuilderPage({ params }: { params: Promise<{ id: str
                 <div className="flex-1 p-6 flex flex-col">
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">System Prompt Context</label>
-                    <span className="text-[10px] bg-[var(--color-bg-base)] border border-[var(--color-border-default)] px-2 py-0.5 rounded text-[var(--color-text-muted)] font-mono">Tokens: ~420</span>
                   </div>
                   <textarea 
                     className="flex-1 w-full bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-xl p-4 text-sm text-[var(--color-text-primary)] font-mono focus:outline-none focus:border-indigo-500 resize-none leading-relaxed"
-                    defaultValue="You are {{agent_name}}, a helpful assistant for {{company_name}}. You handle inbound calls strictly regarding HVAC maintenance scheduling. You must ALWAYS confirm the caller's address before proceeding..."
+                    value={prompts.system_prompt || ''}
+                    onChange={e => setData((prev: any) => ({...prev, prompts: {...prev?.prompts, system_prompt: e.target.value}}))}
+                    placeholder="You are a helpful assistant..."
                   />
-                  <div className="mt-4 flex items-center justify-between">
-                    <div className="flex gap-2">
-                      <span className="px-2 py-1 bg-[var(--color-bg-subtle)] text-[10px] font-mono text-[var(--color-text-secondary)] rounded">{"{{agent_name}}"}</span>
-                      <span className="px-2 py-1 bg-[var(--color-bg-subtle)] text-[10px] font-mono text-[var(--color-text-secondary)] rounded">{"{{company_name}}"}</span>
-                    </div>
-                    <button className="text-sm font-medium text-indigo-500 hover:underline">Insert Variable</button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'workflow' && (
-              <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border-default)] shadow-sm rounded-2xl p-6 h-[600px] flex flex-col items-center justify-center relative overflow-hidden">
-                <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--color-text-primary)_1px,_transparent_1px)]" style={{ backgroundSize: '24px 24px' }}></div>
-                <div className="relative z-10 flex flex-col items-center">
-                  <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-4">
-                    <Workflow size={32} className="text-indigo-500" />
-                  </div>
-                  <h2 className="text-xl font-bold text-[var(--color-text-primary)] mb-2">Workflow Designer</h2>
-                  <p className="text-sm text-[var(--color-text-secondary)] mb-6 text-center max-w-sm">
-                    Drag and drop nodes to define conversation logic, intent routing, and API triggers.
-                  </p>
-                  <button className="px-6 py-2 bg-indigo-500 text-white text-sm font-medium rounded-lg hover:bg-indigo-600 transition-colors shadow-sm">
-                    Open Canvas Editor
-                  </button>
                 </div>
               </div>
             )}
@@ -274,34 +382,46 @@ export default function AgentBuilderPage({ params }: { params: Promise<{ id: str
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Voice Provider</label>
-                    <select className="w-full bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[#ff6600]">
-                      <option>ElevenLabs</option>
-                      <option>PlayHT</option>
-                      <option>Azure TTS</option>
+                    <select 
+                      value={voice.provider || 'elevenlabs'}
+                      onChange={e => setData((prev: any) => ({...prev, voice: {...prev?.voice, provider: e.target.value}}))}
+                      className="w-full bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[#ff6600]"
+                    >
+                      <option value="elevenlabs">ElevenLabs</option>
+                      <option value="playht">PlayHT</option>
+                      <option value="azure">Azure TTS</option>
                     </select>
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Voice Model</label>
-                    <select className="w-full bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[#ff6600]">
-                      <option>Rachel (American, Professional)</option>
-                      <option>Drew (American, News)</option>
-                      <option>Antoni (British, Professional)</option>
-                    </select>
+                    <input 
+                      type="text"
+                      value={voice.model || ''}
+                      onChange={e => setData((prev: any) => ({...prev, voice: {...prev?.voice, model: e.target.value}}))}
+                      className="w-full bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[#ff6600]"
+                      placeholder="e.g. Rachel, Drew"
+                    />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
                   <div className="space-y-3">
-                    <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Speed (1.0x)</label>
-                    <input type="range" min="0.5" max="2.0" step="0.1" defaultValue="1.0" className="w-full accent-[#ff6600]" />
+                    <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Speed ({voice.speed || 1.0}x)</label>
+                    <input 
+                      type="range" min="0.5" max="2.0" step="0.1" 
+                      value={voice.speed || 1.0} 
+                      onChange={e => setData((prev: any) => ({...prev, voice: {...prev?.voice, speed: parseFloat(e.target.value)}}))}
+                      className="w-full accent-[#ff6600]" 
+                    />
                   </div>
                   <div className="space-y-3">
-                    <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Pitch (0)</label>
-                    <input type="range" min="-10" max="10" step="1" defaultValue="0" className="w-full accent-[#ff6600]" />
-                  </div>
-                  <div className="space-y-3">
-                    <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Stability</label>
-                    <input type="range" min="0" max="100" step="1" defaultValue="75" className="w-full accent-[#ff6600]" />
+                    <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Pitch ({voice.pitch || 1.0})</label>
+                    <input 
+                      type="range" min="0.5" max="2.0" step="0.1" 
+                      value={voice.pitch || 1.0} 
+                      onChange={e => setData((prev: any) => ({...prev, voice: {...prev?.voice, pitch: parseFloat(e.target.value)}}))}
+                      className="w-full accent-[#ff6600]" 
+                    />
                   </div>
                 </div>
 
@@ -311,57 +431,20 @@ export default function AgentBuilderPage({ params }: { params: Promise<{ id: str
                     <p className="text-xs text-[var(--color-text-secondary)]">Allow the user to interrupt the agent mid-sentence.</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" defaultChecked />
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={voice.interrupt_handling ?? true}
+                      onChange={e => setData((prev: any) => ({...prev, voice: {...prev?.voice, interrupt_handling: e.target.checked}}))}
+                    />
                     <div className="w-9 h-5 bg-[var(--color-border-subtle)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
                   </label>
                 </div>
               </div>
             )}
 
-            {activeTab === 'integrations' && (
-              <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border-default)] shadow-sm rounded-2xl p-6 space-y-6">
-                <div className="flex items-center justify-between border-b border-[var(--color-border-default)] pb-4">
-                  <div>
-                    <h2 className="text-base font-bold text-[var(--color-text-primary)]">Connected Integrations</h2>
-                    <p className="text-xs text-[var(--color-text-secondary)] mt-1">APIs and services this agent can trigger.</p>
-                  </div>
-                  <button className="flex items-center gap-2 px-3 py-1.5 bg-[#ff6600] text-white text-xs font-medium rounded-lg hover:bg-[#e65c00] transition-colors">
-                    Add Integration
-                  </button>
-                </div>
-                
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-4 bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                        <Database className="text-emerald-500" size={18} />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-[var(--color-text-primary)]">ServiceTitan Booking API</h4>
-                        <p className="text-xs text-[var(--color-text-secondary)]">POST /v2/appointments</p>
-                      </div>
-                    </div>
-                    <span className="px-2.5 py-1 text-[10px] font-medium bg-emerald-500/10 text-emerald-500 rounded-full border border-emerald-500/20">Connected</span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                        <MessageSquare className="text-blue-500" size={18} />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-[var(--color-text-primary)]">Twilio SMS Follow-up</h4>
-                        <p className="text-xs text-[var(--color-text-secondary)]">Sends booking confirmation text</p>
-                      </div>
-                    </div>
-                    <span className="px-2.5 py-1 text-[10px] font-medium bg-emerald-500/10 text-emerald-500 rounded-full border border-emerald-500/20">Connected</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Fallback for Scaffolded Tabs */}
-            {!['overview', 'requirements', 'agent', 'prompts', 'workflow', 'voice', 'integrations'].includes(activeTab) && (
+            {!['overview', 'agent', 'prompts', 'voice'].includes(activeTab) && (
               <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border-default)] rounded-2xl p-8 shadow-sm flex flex-col items-center justify-center min-h-[400px] text-center">
                 <div className="w-16 h-16 rounded-2xl bg-[var(--color-bg-elevated)] border border-[var(--color-border-default)] flex items-center justify-center mb-4">
                   {React.createElement(BUILDER_TABS.find(t => t.id === activeTab)?.icon || Settings, { 
@@ -373,8 +456,11 @@ export default function AgentBuilderPage({ params }: { params: Promise<{ id: str
                   {BUILDER_TABS.find(t => t.id === activeTab)?.label}
                 </h2>
                 <p className="text-sm text-[var(--color-text-secondary)] max-w-md">
-                  This configuration section is currently under construction. Schema migrations are complete and API integration is pending.
+                  This configuration section is dynamically loaded from the database via the Builder Aggregate API. The UI fields for editing this specific section are being built.
                 </p>
+                <div className="mt-6 w-full max-w-md p-4 bg-[var(--color-bg-elevated)] rounded-lg text-left overflow-auto max-h-48 text-xs font-mono text-[var(--color-text-muted)] border border-[var(--color-border-subtle)]">
+                  {JSON.stringify(data[activeTab], null, 2)}
+                </div>
               </div>
             )}
 

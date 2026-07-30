@@ -10,16 +10,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
-  const payload = await request.json();
-  const { environment } = payload;
-
-  if (!environment) {
-    return NextResponse.json({ error: 'Missing environment' }, { status: 400 });
-  }
-
   const service = new AgentBuilderService(supabase);
   try {
-    const result = await service.deployAgent((await params).id, environment, user.id);
+    const result = await service.publishAgent((await params).id);
     return NextResponse.json({ data: result });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
