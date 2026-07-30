@@ -1171,6 +1171,148 @@ model EmployeeAuditLog {
   @@schema("public")
 }
 
+// =============================================================================
+// Email System
+// =============================================================================
+
+enum EmailStatus {
+  QUEUED
+  SENDING
+  SENT
+  FAILED
+  BOUNCED
+  COMPLAINED
+  SKIPPED
+  @@schema("public")
+}
+
+enum EmailCategory {
+  AUTH
+  ORGANIZATION
+  EMPLOYEE
+  DELIVERY
+  AI_BUILDER
+  BILLING
+  SUPPORT
+  DEMO
+  SECURITY
+  NOTIFICATION
+  @@schema("public")
+}
+
+enum EmailPriority {
+  CRITICAL
+  HIGH
+  NORMAL
+  LOW
+  @@schema("public")
+}
+
+enum EmailTemplateStatus {
+  ACTIVE
+  INACTIVE
+  DRAFT
+  @@schema("public")
+}
+
+// Email Log — immutable record of every email send attempt
+model EmailLog {
+  id               String        @id @default(uuid())
+  recipient        String
+  recipientName    String?       @map("recipient_name")
+  subject          String
+  templateKey      String?       @map("template_key")
+  category         EmailCategory @default(NOTIFICATION)
+  priority         EmailPriority @default(NORMAL)
+  status           EmailStatus   @default(QUEUED)
+  organizationId   String?       @map("organization_id")
+  triggeredBy      String?       @map("triggered_by")  // userId or 'system'
+  triggeredByEvent String?       @map("triggered_by_event")
+  providerId       String?       @map("provider_id")   // Resend message ID
+  providerResponse Json?         @map("provider_response")
+  variables        Json          @default("{}")
+  retryCount       Int           @default(0) @map("retry_count")
+  sentAt           DateTime?     @map("sent_at")
+  failedAt         DateTime?     @map("failed_at")
+  errorMessage     String?       @map("error_message") @db.Text
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  queueEntry EmailQueue?
+
+  @@index([organizationId, createdAt])
+  @@index([status, createdAt])
+  @@index([recipient, createdAt])
+  @@index([templateKey])
+  @@map("email_logs")
+  @@schema("public")
+}
+
+// Email Template — metadata registry for all known templates
+model EmailTemplate {
+  id              String              @id @default(uuid())
+  key             String              @unique  // e.g. "welcome", "org-approved"
+  name            String
+  description     String?
+  category        EmailCategory
+  subject         String              // Default subject (can use {{vars}})
+  variables       Json                @default("[]")  // Array of { name, required, description }
+  isSystemTemplate Boolean            @default(false) @map("is_system_template")
+  isMandatory     Boolean             @default(false) @map("is_mandatory")  // Cannot be disabled
+  status          EmailTemplateStatus @default(ACTIVE)
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  @@index([category])
+  @@index([status])
+  @@map("email_templates")
+  @@schema("public")
+}
+
+// Email Preference — per-user opt-in/opt-out settings
+model EmailPreference {
+  id                   String   @id @default(uuid())
+  userId               String   @unique @map("user_id")
+  organizationId       String?  @map("organization_id")
+  marketing            Boolean  @default(true)
+  systemNotifications  Boolean  @default(true) @map("system_notifications")
+  billingEmails        Boolean  @default(true) @map("billing_emails")
+  securityAlerts       Boolean  @default(true) @map("security_alerts")
+  projectNotifications Boolean  @default(true) @map("project_notifications")
+  supportEmails        Boolean  @default(true) @map("support_emails")
+  newsletter           Boolean  @default(false)
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([organizationId])
+  @@map("email_preferences")
+  @@schema("public")
+}
+
+// Email Queue — for retry and deferred send tracking
+model EmailQueue {
+  id           String      @id @default(uuid())
+  emailLogId   String      @unique @map("email_log_id")
+  status       EmailStatus @default(QUEUED)
+  scheduledAt  DateTime?   @map("scheduled_at")
+  processedAt  DateTime?   @map("processed_at")
+  maxRetries   Int         @default(3) @map("max_retries")
+  currentRetry Int         @default(0) @map("current_retry")
+  nextRetryAt  DateTime?   @map("next_retry_at")
+  errorMessage String?     @map("error_message") @db.Text
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  emailLog EmailLog @relation(fields: [emailLogId], references: [id])
+
+  @@index([status, nextRetryAt])
+  @@index([scheduledAt])
+  @@map("email_queue")
+  @@schema("public")
+}
 // ─────────────────────────────────────────────────────────────────────────────
 // Demo Voice Call Sessions (Public — No Auth Required)
 // ─────────────────────────────────────────────────────────────────────────────

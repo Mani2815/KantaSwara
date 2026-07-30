@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@server/lib/supabase/admin';
 import { createClient } from '@server/lib/supabase/server';
 import { AuditLogger } from '@server/lib/audit/logger';
+import { emailEventBus } from '@/lib/email';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -23,6 +24,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     const { id } = await params;
+
+    // Fetch org details for email
+    const { data: orgData, error: orgError } = await supabaseAdmin
+      .from('organizations')
+      .select('name, contact_email, admins:user_organizations(user:profiles(id, first_name, last_name, email))')
+      .eq('id', id)
+      .single();
+
+    if (orgError || !orgData) {
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
 
     const { error } = await supabaseAdmin
       .from('organizations')
@@ -52,6 +64,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       });
     } catch (e) {
       console.error('Failed to write audit log', e);
+    }
+
+    // Trigger Email Event
+    try {
+      const adminProfiles = (orgData.admins as any[])
+        ?.map((a: any) => a.user)
+        .filter(Boolean) || [];
+      
+      const adminEmail = adminProfiles[0]?.email || orgData.contact_email;
+      const adminName = adminProfiles[0] 
+        ? `${adminProfiles[0].first_name || ''} ${adminProfiles[0].last_name || ''}`.trim() || 'Admin'
+        : 'Organization Admin';
+
+      if (adminEmail) {
+        await emailEventBus.emit('OrganizationApproved', {
+          organizationId: id,
+          organizationName: orgData.name,
+          adminEmail,
+          adminName,
+          dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+        });
+      }
+    } catch (e) {
+      console.error('Failed to emit OrganizationApproved event', e);
     }
 
     return NextResponse.json({ message: 'Organization approved successfully' }, { status: 200 });
