@@ -1313,4 +1313,50 @@ model EmailQueue {
   @@map("email_queue")
   @@schema("public")
 }
+// ─────────────────────────────────────────────────────────────────────────────
+// Demo Voice Call Sessions (Public — No Auth Required)
+// ─────────────────────────────────────────────────────────────────────────────
 
+model DemoSession {
+  id              String    @id @default(uuid())
+  sessionToken    String    @unique @map("session_token")
+  ipAddress       String    @map("ip_address")
+  userAgent       String?   @map("user_agent")
+  status          String    @default("active")     // active | completed | expired | error
+  startedAt       DateTime  @default(now()) @map("started_at")
+  endedAt         DateTime? @map("ended_at")
+  durationSeconds Int       @default(0) @map("duration_seconds")
+  turnCount       Int       @default(0) @map("turn_count")
+  summary         String?   @db.Text
+  sentiment       String?
+  feedbackRating  Int?      @map("feedback_rating")
+  feedbackText    String?   @map("feedback_text") @db.Text
+  metadata        Json      @default("{}")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  messages DemoMessage[]
+
+  @@index([ipAddress, createdAt])
+  @@index([status])
+  @@map("demo_sessions")
+  @@schema("public")
+}
+
+model DemoMessage {
+  id            String   @id @default(uuid())
+  sessionId     String   @map("session_id")
+  speaker       String                            // "user" | "agent"
+  text          String   @db.Text
+  durationMs    Int      @default(0) @map("duration_ms")
+  confidence    Float?
+  processingMs  Int?     @map("processing_ms")
+  tokensUsed    Int?     @map("tokens_used")
+  metadata      Json     @default("{}")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  session DemoSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("demo_messages")
+  @@schema("public")
+}

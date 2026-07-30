@@ -114,6 +114,14 @@ export function Navbar() {
               <Link href="/login">Log In</Link>
             </Button>
             <Button 
+              variant="ghost" 
+              size="sm" 
+              style={{ borderRadius: '9999px', border: '1px solid var(--color-border-default)' }}
+              onClick={() => router.push('/demo')}
+            >
+              Try Demo
+            </Button>
+            <Button 
               variant="cta" 
               size="sm" 
               style={{ borderRadius: '9999px' }}
@@ -151,9 +159,20 @@ export function Navbar() {
           </a>
         ))}
         <Button 
+          variant="ghost" 
+          size="lg" 
+          style={{ marginTop: 'var(--space-4)', borderRadius: '9999px', border: '1px solid var(--color-border-default)' }}
+          onClick={() => {
+            setMobileOpen(false);
+            router.push('/demo');
+          }}
+        >
+          Try Demo
+        </Button>
+        <Button 
           variant="cta" 
           size="lg" 
-          style={{ marginTop: 'var(--space-4)', borderRadius: '9999px' }}
+          style={{ marginTop: 'var(--space-2)', borderRadius: '9999px' }}
           onClick={() => {
             setMobileOpen(false);
             router.push('/register');
