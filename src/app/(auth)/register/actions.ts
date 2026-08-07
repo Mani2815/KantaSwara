@@ -81,5 +81,18 @@ export async function createOrgAndProfile(fullName: string, orgName: string, bus
     return { error: 'Failed to create profile' };
   }
 
+  // Trigger registration pending email
+  try {
+    const { emailEventBus } = await import('@/lib/email');
+    await emailEventBus.emit('OrganizationRegistered', {
+      organizationId: orgData.id,
+      organizationName: orgName,
+      adminEmail: user.email!,
+      adminName: fullName || 'Admin',
+    });
+  } catch (e) {
+    console.error('Failed to emit OrganizationRegistered event:', e);
+  }
+
   return { success: true };
 }

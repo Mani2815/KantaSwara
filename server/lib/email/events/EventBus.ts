@@ -42,13 +42,17 @@ export class EmailEventBus {
       return;
     }
 
+    console.log(`[DEBUG-EVENTBUS] Emitting ${event}. Handlers count: ${eventHandlers.length}`);
+
     await Promise.allSettled(
-      eventHandlers.map(async (handler) => {
+      eventHandlers.map(async (handler, idx) => {
         try {
+          console.log(`[DEBUG-EVENTBUS] Executing handler ${idx} for ${event}`);
           await handler(payload);
+          console.log(`[DEBUG-EVENTBUS] Handler ${idx} for ${event} finished successfully`);
         } catch (err) {
           console.error(
-            `[EmailEventBus] Handler for "${event}" threw an error:`,
+            `[EmailEventBus] Handler ${idx} for "${event}" threw an error:`,
             err
           );
         }

@@ -143,23 +143,28 @@ export default function LandingPage() {
           <div className={styles.operations__inner}>
             <div className={styles.operations__content}>
               <h2 className={styles.section__heading}>
-                One Dashboard. Your Entire AI Workforce, Live.
+                One Dashboard. Your Entire AI Workforce.
               </h2>
               <div className={styles.section__body}>
                 <p style={{ marginBottom: 'var(--space-5)' }}>
-                  Monitor every call in progress, every workflow executing, and every outcome logged —
-                  from a single centralized operations view.
+                  Monitor live AI voice agents, conversations, workflows, and business outcomes from one centralized operations dashboard.
                 </p>
                 <p>
-                  Track Qualified Leads, Appointments Booked, Workflow Success Rates, and Call Escalations in real time.
-                  See where leads drop off in the qualification flow, and act on insights without waiting for a sprint cycle.
-                  Gain total operational visibility into your AI workforce&apos;s ROI.
+                  Key Highlights:
                 </p>
+                <ul className={styles.operations__list}>
+                  <li className={styles.operations__list_item}>Live call monitoring</li>
+                  <li className={styles.operations__list_item}>Workflow execution tracking</li>
+                  <li className={styles.operations__list_item}>Real-time analytics</li>
+                  <li className={styles.operations__list_item}>Lead & appointment insights</li>
+                  <li className={styles.operations__list_item}>Agent performance metrics</li>
+                  <li className={styles.operations__list_item}>Operational ROI dashboard.</li>
+                </ul>
               </div>
             </div>
             <div className={styles.operations__image_wrapper}>
-              <Image 
-                src="/images/Gemini_Generated_Image_ql6m4aql6m4aql6m.png" 
+              <Image
+                src="/images/Gemini_Generated_Image_ql6m4aql6m4aql6m.png"
                 alt="KantaSwara Dashboard Mockup"
                 width={800}
                 height={800}
@@ -267,17 +272,17 @@ export default function LandingPage() {
               <h2 className={styles['final-cta__title']}>
                 Stop missing opportunities.<br />Start automating conversations today.
               </h2>
-              
+
               <div className={styles['final-cta__primary-action']}>
                 <Link href="/register" className={styles['final-cta__signup-btn']}>
                   Sign up
                 </Link>
               </div>
-              
+
               <p className={styles['final-cta__secondary-title']}>
                 Need more information?
               </p>
-              
+
               <div className={styles['final-cta__secondary-actions']}>
                 <Link
                   href="/contact"

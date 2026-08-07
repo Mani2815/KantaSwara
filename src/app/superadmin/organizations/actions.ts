@@ -64,17 +64,34 @@ export async function approveOrganization(organizationId: string) {
       return { success: false, error: error.message };
     }
 
-    // Fetch org admin to send email
-    const { data: adminProfiles } = await supabaseAdmin
+    // Fetch org profiles to find recipient email
+    const { data: profiles } = await supabaseAdmin
       .from('profiles')
-      .select('full_name, email')
-      .eq('organization_id', organizationId)
-      .eq('role', 'org_admin')
-      .limit(1);
+      .select('full_name, email, role')
+      .eq('organization_id', organizationId);
 
-    const admin = adminProfiles?.[0];
-    if (orgData && admin && admin.email) {
+    const admin =
+      profiles?.find((p) => p.role === 'org_admin' && p.email) ||
+      profiles?.find((p) => p.email);
+
+    console.log('\n[DEBUG-ACTIONS] Recipient Resolution:');
+    console.log({
+      orgContactEmail: orgData?.contact_email,
+      profilesFetched: profiles?.length,
+      adminResolved: !!admin,
+      adminEmail: admin?.email,
+      adminName: admin?.full_name
+    });
+
+    if (orgData && admin?.email) {
       try {
+        console.log('\n[DEBUG-ACTIONS] EventBus Handlers before emit:');
+        const handlers = (emailEventBus as any).handlers?.get('OrganizationApproved');
+        console.log(`OrganizationApproved handler count: ${handlers?.length || 0}`);
+        if (!handlers || handlers.length === 0) {
+          console.warn('[DEBUG-ACTIONS] WARNING: No handlers registered for OrganizationApproved!');
+        }
+
         await emailEventBus.emit('OrganizationApproved', {
           organizationId,
           organizationName: orgData.name,
@@ -85,6 +102,8 @@ export async function approveOrganization(organizationId: string) {
       } catch (e) {
         console.error('Failed to emit OrganizationApproved event:', e);
       }
+    } else {
+      console.warn(`[approveOrganization] No email found for organization ${organizationId}`);
     }
 
     revalidatePath('/superadmin/organizations');
@@ -117,16 +136,17 @@ export async function rejectOrganization(organizationId: string, reason: string)
       return { success: false, error: error.message };
     }
 
-    // Fetch org admin to send email
-    const { data: adminProfiles } = await supabaseAdmin
+    // Fetch org profiles to find recipient email
+    const { data: profiles } = await supabaseAdmin
       .from('profiles')
-      .select('full_name, email')
-      .eq('organization_id', organizationId)
-      .eq('role', 'org_admin')
-      .limit(1);
+      .select('full_name, email, role')
+      .eq('organization_id', organizationId);
 
-    const admin = adminProfiles?.[0];
-    if (orgData && admin && admin.email) {
+    const admin =
+      profiles?.find((p) => p.role === 'org_admin' && p.email) ||
+      profiles?.find((p) => p.email);
+
+    if (orgData && admin?.email) {
       try {
         await emailEventBus.emit('OrganizationRejected', {
           organizationId,
@@ -138,6 +158,8 @@ export async function rejectOrganization(organizationId: string, reason: string)
       } catch (e) {
         console.error('Failed to emit OrganizationRejected event:', e);
       }
+    } else {
+      console.warn(`[rejectOrganization] No email found for organization ${organizationId}`);
     }
 
     revalidatePath('/superadmin/organizations');

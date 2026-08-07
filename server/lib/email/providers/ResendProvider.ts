@@ -20,14 +20,27 @@ export class ResendProvider implements IEmailProvider {
     try {
       const config = getEmailConfig();
 
-      const toAddresses = Array.isArray(payload.to)
+      let toAddresses = Array.isArray(payload.to)
         ? payload.to.map((r) => (r.name ? `${r.name} <${r.email}>` : r.email))
         : payload.to.name
           ? [`${payload.to.name} <${payload.to.email}>`]
           : [payload.to.email];
 
+      const fromAddress = payload.from ?? config.fromEmail;
+      const targetDevEmail = config.devRedirectTo ?? (fromAddress.includes('@resend.dev') ? 'smartcitycms@gmail.com' : undefined);
+
+      if (targetDevEmail) {
+        const isAlreadyOwner = toAddresses.length === 1 && toAddresses[0].includes(targetDevEmail);
+        if (!isAlreadyOwner) {
+          console.log(
+            `[ResendProvider] Dev mode / unverified domain (@resend.dev): Redirecting recipient(s) [${toAddresses.join(', ')}] -> ${targetDevEmail}`
+          );
+          toAddresses = [targetDevEmail];
+        }
+      }
+
       const { data, error } = await this.client.emails.send({
-        from: payload.from ?? config.fromEmail,
+        from: fromAddress,
         to: toAddresses,
         reply_to: payload.replyTo ?? config.replyTo,
         subject: payload.subject,
@@ -57,6 +70,12 @@ export class ResendProvider implements IEmailProvider {
       });
 
       if (error) {
+        if (error.message.includes('testing emails') || error.name === 'validation_error') {
+          console.warn(
+            `[ResendProvider] Unverified domain restriction: Resend allows sending emails ONLY to smartcitycms@gmail.com in test mode. ` +
+            `To send to other recipients, verify a domain at https://resend.com/domains and set RESEND_FROM_EMAIL to an address on that domain.`
+          );
+        }
         return {
           success: false,
           error: error.message,
