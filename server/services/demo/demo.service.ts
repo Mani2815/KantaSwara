@@ -7,31 +7,44 @@
 // This is the main entry point for all demo API routes.
 // It coordinates: rate limiting, session management, STT → LLM → TTS pipeline,
 // conversation persistence, and summary generation.
+//
+// REFACTORED (Milestone 2): Now uses ProviderRegistry from the runtime layer
+// instead of direct provider instantiation. Demo behavior is 100% preserved —
+// same DemoSession/DemoMessage tables, same rate limiting, same API responses.
 // =============================================================================
 
 import { prisma } from '@server/lib/prisma';
-import { checkRateLimit, getRateLimitCount } from '@server/utils/rate-limiter';
+import { checkRateLimit } from '@server/utils/rate-limiter';
 import { DEMO_AGENT_CONFIG } from './demo.config';
 import { assemblePrompt } from '../voice/prompt.service';
 import {
   addMessage,
   getPromptHistory,
   clearSessionCache,
-  getActiveCacheCount,
 } from '../voice/conversation.service';
-import { OpenAILLMProvider } from '../providers/llm/openai.provider';
-import { OpenAIWhisperSTTProvider } from '../providers/stt/openai-whisper.provider';
-import { OpenAITTSProvider } from '../providers/tts/openai-tts.provider';
+import {
+  getSTTProvider,
+  getLLMProvider,
+  getTTSProvider,
+} from '../runtime/provider-registry.service';
 import type {
   StartDemoResponse,
   DemoMessageResponse,
   EndDemoResponse,
 } from './demo.types';
 
-// ── Provider Instances (singleton for reuse) ────────────────────────────────
-const llmProvider = new OpenAILLMProvider();
-const sttProvider = new OpenAIWhisperSTTProvider();
-const ttsProvider = new OpenAITTSProvider();
+// ── Provider Resolution (via Registry instead of hardcoded singletons) ───────
+function getDemoSTT() {
+  return getSTTProvider(DEMO_AGENT_CONFIG.providers.stt);
+}
+
+function getDemoLLM() {
+  return getLLMProvider(DEMO_AGENT_CONFIG.providers.llm);
+}
+
+function getDemoTTS() {
+  return getTTSProvider(DEMO_AGENT_CONFIG.providers.tts);
+}
 
 // ── Session Token Generation ────────────────────────────────────────────────
 function generateSessionToken(): string {
@@ -98,7 +111,7 @@ export async function startDemoSession(
   // ── Generate greeting audio (optional, async) ───────────────────────────
   let greetingAudio: string | undefined;
   try {
-    const ttsResult = await ttsProvider.synthesize(config.greeting, {
+    const ttsResult = await getDemoTTS().synthesize(config.greeting, {
       voice: config.tts.voice,
       speed: config.tts.speed,
       format: config.tts.format,
@@ -168,7 +181,7 @@ export async function processDemoMessage(
 
   if (input.audio && !userText) {
     const audioBuffer = Buffer.from(input.audio, 'base64');
-    const sttResult = await sttProvider.transcribe(
+    const sttResult = await getDemoSTT().transcribe(
       audioBuffer,
       input.audioMimeType || 'audio/webm'
     );
@@ -204,7 +217,7 @@ export async function processDemoMessage(
   });
 
   // ── Generate LLM response ──────────────────────────────────────────────
-  const llmResponse = await llmProvider.complete(messages, {
+  const llmResponse = await getDemoLLM().complete(messages, {
     model: config.llm.model,
     temperature: config.llm.temperature,
     maxTokens: config.llm.maxTokens,
@@ -224,7 +237,7 @@ export async function processDemoMessage(
   let audioBase64: string | undefined;
   let audioMimeType: string | undefined;
   try {
-    const ttsResult = await ttsProvider.synthesize(agentText, {
+    const ttsResult = await getDemoTTS().synthesize(agentText, {
       voice: config.tts.voice,
       speed: config.tts.speed,
       format: config.tts.format,
@@ -373,7 +386,7 @@ async function generateSummary(
     .join('\n');
 
   try {
-    const response = await llmProvider.complete(
+    const response = await getDemoLLM().complete(
       [
         {
           role: 'system',

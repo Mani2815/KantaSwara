@@ -397,6 +397,7 @@ model KnowledgeDocument {
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
   knowledgeBase KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id])
+  chunks        DocumentChunk[]
 
   @@index([knowledgeBaseId])
   @@index([organizationId])
@@ -1363,4 +1364,79 @@ model EmailQueue {
   @@schema("public")
 }
 
+
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Voice Runtime Sessions (Multi-Tenant — Authenticated)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model VoiceSession {
+  id               String    @id @default(uuid())
+  organizationId   String    @map("organization_id")
+  agentId          String    @map("agent_id")
+  sessionToken     String    @unique @map("session_token")
+  state            String    @default("pending")  // VoiceSessionState enum values
+  callerIdentifier String?   @map("caller_identifier")
+  startedAt        DateTime  @default(now()) @map("started_at")
+  endedAt          DateTime? @map("ended_at")
+  durationSeconds  Int       @default(0) @map("duration_seconds")
+  turnCount        Int       @default(0) @map("turn_count")
+  totalTokens      Int       @default(0) @map("total_tokens")
+  estimatedCost    Decimal   @default(0) @map("estimated_cost") @db.Decimal(12, 6)
+  avgLatencyMs     Int       @default(0) @map("avg_latency_ms")
+  summary          String?   @db.Text
+  metadata         Json      @default("{}")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  messages VoiceSessionMessage[]
+
+  @@index([organizationId])
+  @@index([organizationId, agentId])
+  @@index([state])
+  @@map("voice_sessions")
+  @@schema("public")
+}
+
+model VoiceSessionMessage {
+  id           String   @id @default(uuid())
+  sessionId    String   @map("session_id")
+  speaker      String   // "user" | "agent" | "system"
+  text         String   @db.Text
+  role         String?  // "user" | "assistant" | "system" — for LLM context
+  processingMs Int?     @map("processing_ms")
+  tokensUsed   Int?     @map("tokens_used")
+  metadata     Json     @default("{}")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  session VoiceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("voice_session_messages")
+  @@schema("public")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Knowledge Engine — Document Chunks (Embeddings)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model DocumentChunk {
+  id              String   @id @default(uuid())
+  documentId      String   @map("document_id")
+  knowledgeBaseId String   @map("knowledge_base_id")
+  organizationId  String   @map("organization_id")
+  content         String   @db.Text
+  chunkIndex      Int      @map("chunk_index")
+  tokenCount      Int      @default(0) @map("token_count")
+  embedding       Json?    // float[] stored as JSON (pgvector migration later)
+  metadata        Json     @default("{}")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  document KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([knowledgeBaseId, organizationId])
+  @@index([documentId])
+  @@map("document_chunks")
+  @@schema("public")
+}
 
