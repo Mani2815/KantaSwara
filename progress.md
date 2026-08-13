@@ -1,7 +1,7 @@
 # KantaSwara — Backend Development Progress
 
 > **Branch:** `backend/slaven`  
-> **Last Updated:** 2026-08-01  
+> **Last Updated:** 2026-08-13  
 > **Author:** Slaven
 
 ---
@@ -50,6 +50,9 @@ A visitor lands on the website → clicks "Try Live Demo" → instantly talks to
 
 | Item | Status | Notes |
 |---|---|---|
+| Phase 4: Knowledge Engine | In Progress | Built PgVectorStore; wired semantic search & token budget into VoiceRuntime. |
+| Phase 5: Agent Binding | In Progress | Created Agent deployment API endpoints and validation services. |
+| Phase 7: Workflow Engine | In Progress | Built intent router, parser, and state machine foundation. |
 | Milestone 2.5 — Polish & Hardening | In Progress | Rate limiting and concurrency controls are implemented. Requires latency profiling on production servers. |
 | Streaming LLM Response | Pending Integration | SSE infrastructure is ready, but word-by-word streaming needs to be fully wired up to the frontend UI for live transcripts. |
 
@@ -64,13 +67,13 @@ Extract the single-tenant demo pipeline into a robust, multi-tenant execution en
 - **Connection Manager:** Handle WebSockets or WebRTC for robust, low-latency audio streaming (replacing the HTTP polling/base64 approach used in the demo).
 - **Workflow:** An API gateway routes incoming telephony/web connections -> Connection Manager -> Voice Runtime -> Providers.
 
-### Phase 4: Knowledge Engine (RAG Integration)
+### Phase 4: Knowledge Engine (RAG Integration) [IN PROGRESS]
 Enable agents to understand and query organizational data.
 - **Document Pipeline:** Endpoints for uploading PDF/TXT/HTML files.
 - **Vector DB Integration:** Chunking text and generating embeddings (using OpenAI text-embedding-3 or similar), storing them in Supabase pgvector or an external vector DB.
 - **Retrieval Workflow:** During `PromptService` assembly, run a semantic search against the organization's Knowledge Base and inject context into the LLM system prompt dynamically.
 
-### Phase 5: Agent ↔ Organization Binding
+### Phase 5: Agent ↔ Organization Binding [IN PROGRESS]
 Connect the underlying runtime with the platform's RBAC and tenant architecture.
 - **Configuration API:** Build out the CRUD endpoints for `AgentConfiguration`, `PromptConfiguration`, and `VoiceConfiguration` models.
 - **Deployment Manager:** Logic to transition an agent from "Draft" -> "Testing" -> "Deployed", making it actively available for calls.
@@ -82,7 +85,7 @@ Make the system resilient against AI provider outages.
 - **Failover Logic:** If OpenAI Whisper fails or times out (>2s), automatically fallback to Deepgram or Azure STT.
 - **Cost Routing:** Allow routing inference requests based on cost constraints (e.g., use Claude 3 Haiku for basic queries, GPT-4o for complex reasoning).
 
-### Phase 7: Workflow Execution Engine
+### Phase 7: Workflow Execution Engine [IN PROGRESS]
 Bring the visual builder to life.
 - **Graph Execution:** Parse JSON-based workflow graphs (from `WorkflowConfiguration`).
 - **State Machine:** Implement a state machine that transitions between states based on LLM intent classification (e.g., "User wants to book -> Transition to Booking Node").
@@ -104,11 +107,10 @@ Prepare the platform for enterprise SLAs.
 
 ## 🛠 Next Steps (Immediate Action Plan)
 
-1. **Verify Environment:** Switch to Node 22, run `npm install`, and configure `OPENAI_API_KEY`.
-2. **Database Sync:** Run Prisma migrations (`npx prisma migrate dev --name add-demo-sessions`).
-3. **End-to-End Demo Test:** Validate the STT -> LLM -> TTS pipeline locally.
-4. **Wire Streaming Transcript:** Connect the SSE chunks to the `useDemo` frontend for real-time text appearance.
-5. **Commit & Deploy:** Push finalized demo to `backend/slaven` and prepare for staging deployment.
+1. **Test New Integrations:** Verify the newly wired `queryKnowledge` inside `voice-runtime.service.ts` works seamlessly and validate Agent CRUD API logic.
+2. **Prisma Migrations:** If Agent configurations, Workflow services, or pgvector rely on new database schema tables, update `schema.prisma` and run `npx prisma migrate dev`.
+3. **Workflow & Knowledge Polish:** Ensure all edge cases in the visual workflow executor are handled and connect the API gateway to it.
+4. **Frontend Integration:** Wire up the UI for the dashboard to manage these newly deployed Agents and view their Knowledge Bases.
 
 ---
 *This document outlines the complete roadmap. Refer to specific PRs and git history for atomic code changes.*
