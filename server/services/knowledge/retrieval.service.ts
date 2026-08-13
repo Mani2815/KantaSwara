@@ -160,10 +160,15 @@ let defaultStore: VectorStore | null = null;
 
 /**
  * Get the default vector store instance.
+ * Uses PgVectorStore in production (with automatic fallback to JSON-based
+ * cosine similarity when pgvector extension is unavailable).
+ * Use setVectorStore() to override (e.g., InMemoryVectorStore for tests).
  */
 export function getVectorStore(): VectorStore {
   if (!defaultStore) {
-    defaultStore = new InMemoryVectorStore();
+    // Production default: PgVectorStore (auto-detects pgvector availability)
+    const { PgVectorStore } = require('./pgvector-store.service');
+    defaultStore = new PgVectorStore();
   }
   return defaultStore;
 }
