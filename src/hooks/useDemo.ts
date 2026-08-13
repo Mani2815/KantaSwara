@@ -25,6 +25,8 @@ export type DemoStatus =
   | 'error'
   | 'ended';
 
+export type DemoDomain = 'healthcare' | 'education' | 'banking';
+
 export interface TranscriptEntry {
   id: string;
   speaker: 'user' | 'agent';
@@ -37,6 +39,7 @@ export interface DemoState {
   sessionToken: string | null;
   sessionId: string | null;
   agentName: string;
+  domain: DemoDomain | null;
   transcript: TranscriptEntry[];
   isListening: boolean;
   isProcessing: boolean;
@@ -67,7 +70,8 @@ export function useDemo(callbacks?: DemoCallbacks) {
     status: 'idle',
     sessionToken: null,
     sessionId: null,
-    agentName: 'Rani',
+    agentName: 'Agent',
+    domain: null,
     transcript: [],
     isListening: false,
     isProcessing: false,
@@ -164,11 +168,15 @@ export function useDemo(callbacks?: DemoCallbacks) {
   );
 
   // ── Start Session ─────────────────────────────────────────────────────────
-  const startSession = useCallback(async () => {
+  const startSession = useCallback(async (domain: DemoDomain) => {
     try {
       update({ status: 'connecting', error: null });
 
-      const res = await fetch(`${API_BASE}/start`, { method: 'POST' });
+      const res = await fetch(`${API_BASE}/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain }),
+      });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.message || 'Failed to start demo');
@@ -181,7 +189,8 @@ export function useDemo(callbacks?: DemoCallbacks) {
         status: 'active',
         sessionToken: data.sessionToken,
         sessionId: data.sessionId,
-        agentName: data.agentName || 'Rani',
+        agentName: data.agentName || 'Agent',
+        domain: data.domain || domain,
         maxDurationSec: data.maxDurationSec || 300,
         transcript: [],
         turnCount: 0,
@@ -434,7 +443,8 @@ export function useDemo(callbacks?: DemoCallbacks) {
       status: 'idle',
       sessionToken: null,
       sessionId: null,
-      agentName: 'Rani',
+      agentName: 'Agent',
+      domain: null,
       transcript: [],
       isListening: false,
       isProcessing: false,

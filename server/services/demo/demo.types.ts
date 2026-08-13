@@ -2,6 +2,8 @@
 // Demo Service Types
 // =============================================================================
 
+import type { DemoDomain } from './domain-personas.config';
+
 export interface DemoSession {
   id: string;
   sessionToken: string;
@@ -37,6 +39,8 @@ export interface DemoMessage {
 export interface StartDemoRequest {
   /** Optional: user's name for personalization */
   userName?: string;
+  /** Required: selected business domain */
+  domain: DemoDomain;
 }
 
 export interface StartDemoResponse {
@@ -45,6 +49,7 @@ export interface StartDemoResponse {
   greeting: string;
   greetingAudio?: string; // base64 audio
   agentName: string;
+  domain: DemoDomain;
   maxDurationSec: number;
 }
 
