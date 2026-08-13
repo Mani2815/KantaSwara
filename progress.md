@@ -46,10 +46,17 @@ A visitor lands on the website → clicks "Try Live Demo" → instantly talks to
 - **Milestone 2.3:** Real-time infrastructure with SSE for text streaming.
 - **Milestone 2.4:** Frontend `useDemo` hook (MediaRecorder, AudioContext) and UI rewrite.
 
+#### Milestone 2.6 — Multi-Domain Demo
+- Three domain personas: Healthcare (Ananya), Education (Kavitha), Banking (Priya).
+- Domain-aware `demo.service.ts` — loads persona from session metadata.
+- Updated `useDemo` hook and API route for domain selection.
+- Two-phase demo page: domain selection cards → voice session with domain-specific UI.
+
 ### 🔧 In Progress
 
 | Item | Status | Notes |
 |---|---|---|
+| Multi-Domain Demo Polish | In Progress | Core implementation done. Needs end-to-end testing with live API keys. |
 | Phase 4: Knowledge Engine | In Progress | Built PgVectorStore; wired semantic search & token budget into VoiceRuntime. |
 | Phase 5: Agent Binding | In Progress | Created Agent deployment API endpoints and validation services. |
 | Phase 7: Workflow Engine | In Progress | Built intent router, parser, and state machine foundation. |
@@ -107,10 +114,11 @@ Prepare the platform for enterprise SLAs.
 
 ## 🛠 Next Steps (Immediate Action Plan)
 
-1. **Test New Integrations:** Verify the newly wired `queryKnowledge` inside `voice-runtime.service.ts` works seamlessly and validate Agent CRUD API logic.
-2. **Prisma Migrations:** If Agent configurations, Workflow services, or pgvector rely on new database schema tables, update `schema.prisma` and run `npx prisma migrate dev`.
-3. **Workflow & Knowledge Polish:** Ensure all edge cases in the visual workflow executor are handled and connect the API gateway to it.
-4. **Frontend Integration:** Wire up the UI for the dashboard to manage these newly deployed Agents and view their Knowledge Bases.
+1. **End-to-End Demo Test:** Configure `OPENAI_API_KEY`, run locally, and test all three domain personas.
+2. **Verify Domain Boundaries:** Confirm each persona rejects off-topic questions gracefully.
+3. **Voice Mode Testing:** Validate STT → LLM → TTS pipeline works with each persona's TTS voice.
+4. **Mobile Responsiveness:** Verify domain selection cards and voice session render well on mobile.
+5. **Deploy to Staging:** Push to staging environment for final review before submission.
 
 ---
 *This document outlines the complete roadmap. Refer to specific PRs and git history for atomic code changes.*
