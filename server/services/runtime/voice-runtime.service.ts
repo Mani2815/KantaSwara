@@ -16,6 +16,7 @@ import type {
   SessionMetrics,
 } from './runtime.types';
 import type { SSEController } from './streaming.service';
+import { queryKnowledge } from '../knowledge/knowledge.service';
 
 import * as sessionManager from './session-manager.service';
 import * as conversationManager from './conversation-manager.service';
@@ -110,13 +111,21 @@ export async function processMessage(
     }
   }
 
-  // ── Step 4: Knowledge retrieval (future) ────────────────────────────────
+  // ── Step 4: Knowledge retrieval ──────────────────────────────────────────
   let knowledgeContext: string | undefined;
 
   if (context.features.knowledgeEnabled && context.agent.knowledgeBaseIds.length > 0) {
-    // Knowledge retrieval will be wired in Phase 4
-    // For now, this is a placeholder
-    knowledgeContext = undefined;
+    try {
+      knowledgeContext = await queryKnowledge(
+        userText,
+        context.agent.knowledgeBaseIds,
+        context.organization.id,
+        Math.floor(context.constraints.maxContextTokens * 0.3) // 30% of budget for knowledge
+      );
+    } catch (err) {
+      console.error('[VoiceRuntime] Knowledge retrieval failed:', err);
+      // Non-fatal — agent responds without knowledge context
+    }
   }
 
   // ── Step 5: Prompt assembly ─────────────────────────────────────────────
@@ -312,7 +321,17 @@ export async function processMessageStreaming(
     // ── Knowledge retrieval ───────────────────────────────────────────────
     let knowledgeContext: string | undefined;
     if (context.features.knowledgeEnabled && context.agent.knowledgeBaseIds.length > 0) {
-      knowledgeContext = undefined; // Phase 4 wiring
+      try {
+        knowledgeContext = await queryKnowledge(
+          userText,
+          context.agent.knowledgeBaseIds,
+          context.organization.id,
+          Math.floor(context.constraints.maxContextTokens * 0.3)
+        );
+      } catch (err) {
+        console.error('[VoiceRuntime] Knowledge retrieval failed:', err);
+        // Non-fatal — agent responds without knowledge context
+      }
     }
 
     // ── Prompt assembly ───────────────────────────────────────────────────

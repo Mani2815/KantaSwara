@@ -16,6 +16,7 @@
 import { prisma } from '@server/lib/prisma';
 import { checkRateLimit } from '@server/utils/rate-limiter';
 import { DEMO_AGENT_CONFIG } from './demo.config';
+import { getDomainPersona, type DemoDomain } from './domain-personas.config';
 import { assemblePrompt } from '../voice/prompt.service';
 import {
   addMessage,
@@ -62,9 +63,11 @@ function generateSessionToken(): string {
 
 export async function startDemoSession(
   ipAddress: string,
-  userAgent: string | null
+  userAgent: string | null,
+  domain: DemoDomain = 'healthcare'
 ): Promise<StartDemoResponse> {
   const config = DEMO_AGENT_CONFIG;
+  const persona = getDomainPersona(domain);
 
   // ── Rate limiting ───────────────────────────────────────────────────────
   const rateResult = checkRateLimit(
@@ -102,17 +105,18 @@ export async function startDemoSession(
       ipAddress,
       userAgent,
       status: 'active',
+      metadata: { domain },
     },
   });
 
   // ── Store greeting as first agent message ───────────────────────────────
-  await addMessage(session.id, 'agent', config.greeting);
+  await addMessage(session.id, 'agent', persona.greeting);
 
   // ── Generate greeting audio (optional, async) ───────────────────────────
   let greetingAudio: string | undefined;
   try {
-    const ttsResult = await getDemoTTS().synthesize(config.greeting, {
-      voice: config.tts.voice,
+    const ttsResult = await getDemoTTS().synthesize(persona.greeting, {
+      voice: persona.ttsVoice,
       speed: config.tts.speed,
       format: config.tts.format,
     });
@@ -125,9 +129,10 @@ export async function startDemoSession(
   return {
     sessionId: session.id,
     sessionToken,
-    greeting: config.greeting,
+    greeting: persona.greeting,
     greetingAudio,
-    agentName: config.name,
+    agentName: persona.name,
+    domain,
     maxDurationSec: config.constraints.maxSessionDurationSec,
   };
 }
@@ -155,6 +160,11 @@ export async function processDemoMessage(
   if (session.status !== 'active') {
     throw new DemoError('SESSION_ENDED', 'This demo session has ended.', 410);
   }
+
+  // ── Resolve domain persona ──────────────────────────────────────────────
+  const sessionMeta = (session.metadata as Record<string, unknown>) || {};
+  const domain = (sessionMeta.domain as string) || 'healthcare';
+  const persona = getDomainPersona(domain);
 
   // ── Check session limits ────────────────────────────────────────────────
   const elapsed = Math.floor((Date.now() - session.startedAt.getTime()) / 1000);
@@ -210,7 +220,7 @@ export async function processDemoMessage(
   const historyWithoutCurrent = history.slice(0, -1);
 
   const messages = assemblePrompt({
-    systemPrompt: config.systemPrompt,
+    systemPrompt: persona.systemPrompt,
     history: historyWithoutCurrent,
     userMessage: userText,
     maxContextMessages: config.constraints.maxContextMessages,
@@ -238,7 +248,7 @@ export async function processDemoMessage(
   let audioMimeType: string | undefined;
   try {
     const ttsResult = await getDemoTTS().synthesize(agentText, {
-      voice: config.tts.voice,
+      voice: persona.ttsVoice,
       speed: config.tts.speed,
       format: config.tts.format,
     });
@@ -297,8 +307,13 @@ export async function endDemoSession(
     throw new DemoError('SESSION_NOT_FOUND', 'Invalid session token.', 404);
   }
 
+  // Resolve persona name for summary
+  const sessionMeta = (session.metadata as Record<string, unknown>) || {};
+  const domain = (sessionMeta.domain as string) || 'healthcare';
+  const persona = getDomainPersona(domain);
+
   // Generate summary using LLM
-  const summary = await generateSummary(session.messages);
+  const summary = await generateSummary(session.messages, persona.name);
 
   // Update session
   const durationSeconds = Math.floor(
@@ -377,12 +392,13 @@ async function endSession(sessionId: string, reason: string): Promise<void> {
 }
 
 async function generateSummary(
-  messages: Array<{ speaker: string; text: string }>
+  messages: Array<{ speaker: string; text: string }>,
+  agentName: string = 'Agent'
 ): Promise<string> {
   if (messages.length === 0) return 'No conversation recorded.';
 
   const transcript = messages
-    .map((m) => `${m.speaker === 'user' ? 'Visitor' : 'Rani'}: ${m.text}`)
+    .map((m) => `${m.speaker === 'user' ? 'Visitor' : agentName}: ${m.text}`)
     .join('\n');
 
   try {
@@ -391,7 +407,7 @@ async function generateSummary(
         {
           role: 'system',
           content:
-            'You are a conversation summarizer. Generate a brief 2-3 sentence summary of the following demo conversation between a visitor and Rani (KantaSwara AI agent). Focus on what the visitor was interested in and any next steps mentioned.',
+            `You are a conversation summarizer. Generate a brief 2-3 sentence summary of the following demo conversation between a visitor and ${agentName} (KantaSwara AI agent). Focus on what the visitor was interested in and any next steps mentioned.`,
         },
         { role: 'user', content: transcript },
       ],
