@@ -168,8 +168,8 @@ export function validateContract(contract: WorkflowContract): {
   }
 
   const nodeIds = new Set(contract.nodes.map((n) => n.id));
-  const startNodes = contract.nodes.filter((n) => n.type === 'start');
-  const endNodes = contract.nodes.filter((n) => n.type === 'end');
+  const startNodes = contract.nodes.filter((n) => (n.type as string) === 'trigger' || (n.type as string) === 'start');
+  const endNodes = contract.nodes.filter((n) => (n.type as string) === 'end');
 
   if (startNodes.length === 0) errors.push('No start node found.');
   if (startNodes.length > 1) errors.push('Multiple start nodes found.');
