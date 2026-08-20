@@ -44,7 +44,7 @@ export class OpenAIWhisperSTTProvider implements STTProvider {
 
     // Build multipart form data
     const formData = new FormData();
-    const blob = new Blob([audio], { type: mimeType });
+    const blob = new Blob([new Uint8Array(audio)], { type: mimeType });
     formData.append('file', blob, `audio.${ext}`);
     formData.append('model', options?.model || DEFAULT_MODEL);
     formData.append('response_format', 'verbose_json');
