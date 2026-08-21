@@ -18,6 +18,8 @@ import {
   GraduationCap,
   Landmark,
   Sparkles,
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -152,6 +154,7 @@ export default function DemoPage() {
     startListening,
     stopListening,
     submitFeedback,
+    dismissError,
     reset,
   } = useDemo();
 
@@ -392,6 +395,36 @@ export default function DemoPage() {
             <span className="text-xs text-[var(--color-text-muted)]">{statusInfo.label}</span>
           </div>
         </div>
+
+        {/* ── Time Warning Banner ─────────────────────────────────────────── */}
+        {state.timeWarning && isSessionActive && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2.5 bg-amber-500/10 border border-amber-500/30 text-amber-600 rounded-xl px-4 py-3 text-sm font-medium"
+          >
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <span>Your demo session ends in about 30 seconds. Wrap up your conversation!</span>
+          </motion.div>
+        )}
+
+        {/* ── Dismissable Error Banner ────────────────────────────────────── */}
+        {state.error && isSessionActive && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-between gap-2.5 bg-red-500/10 border border-red-500/30 text-red-600 rounded-xl px-4 py-3 text-sm"
+          >
+            <span>{state.error}</span>
+            <button
+              onClick={dismissError}
+              className="flex-shrink-0 p-0.5 rounded hover:bg-red-500/10 transition-colors"
+              title="Dismiss"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
 
         {/* ── Main Content ───────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

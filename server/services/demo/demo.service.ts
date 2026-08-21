@@ -34,6 +34,38 @@ import type {
   EndDemoResponse,
 } from './demo.types';
 
+// =============================================================================
+// TIMEOUT HELPER
+// =============================================================================
+
+/**
+ * Wraps a promise with an AbortSignal-based timeout.
+ * Throws a DemoError with a user-friendly message if the timeout is exceeded.
+ */
+async function withTimeout<T>(
+  fn: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number,
+  errorCode: string,
+  errorMessage: string
+): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const result = await fn(controller.signal);
+    clearTimeout(timer);
+    return result;
+  } catch (err: unknown) {
+    clearTimeout(timer);
+    if (
+      err instanceof Error &&
+      (err.name === 'AbortError' || controller.signal.aborted)
+    ) {
+      throw new DemoError(errorCode, errorMessage, 504);
+    }
+    throw err;
+  }
+}
+
 // ── Provider Resolution (via Registry instead of hardcoded singletons) ───────
 function getDemoSTT() {
   return getSTTProvider(DEMO_AGENT_CONFIG.providers.stt);
@@ -191,16 +223,28 @@ export async function processDemoMessage(
 
   if (input.audio && !userText) {
     const audioBuffer = Buffer.from(input.audio, 'base64');
-    const sttResult = await getDemoSTT().transcribe(
-      audioBuffer,
-      input.audioMimeType || 'audio/webm'
-    );
+
+    const sttResult = await withTimeout(
+      (_signal) =>
+        getDemoSTT().transcribe(audioBuffer, input.audioMimeType || 'audio/webm'),
+      15_000,
+      'STT_TIMEOUT',
+      "I'm having trouble processing your audio right now. Please try speaking again or switch to text mode."
+    ).catch((err) => {
+      if (err instanceof DemoError) throw err;
+      throw new DemoError(
+        'STT_ERROR',
+        "I couldn't transcribe your audio. Please try again or switch to text input.",
+        502
+      );
+    });
+
     userText = sttResult.text;
 
     if (!userText.trim()) {
       throw new DemoError(
         'EMPTY_AUDIO',
-        'I couldn\'t catch that. Could you please speak again?',
+        "I couldn't catch that. Could you please speak again?",
         400
       );
     }
@@ -227,11 +271,24 @@ export async function processDemoMessage(
   });
 
   // ── Generate LLM response ──────────────────────────────────────────────
-  const llmResponse = await getDemoLLM().complete(messages, {
-    model: config.llm.model,
-    temperature: config.llm.temperature,
-    maxTokens: config.llm.maxTokens,
-    topP: config.llm.topP,
+  const llmResponse = await withTimeout(
+    (_signal) =>
+      getDemoLLM().complete(messages, {
+        model: config.llm.model,
+        temperature: config.llm.temperature,
+        maxTokens: config.llm.maxTokens,
+        topP: config.llm.topP,
+      }),
+    30_000,
+    'LLM_TIMEOUT',
+    "I'm taking a moment to think. Please try your message again."
+  ).catch((err) => {
+    if (err instanceof DemoError) throw err;
+    throw new DemoError(
+      'LLM_ERROR',
+      "I had trouble generating a response. Please try again.",
+      502
+    );
   });
 
   const agentText = llmResponse.text;
@@ -247,16 +304,22 @@ export async function processDemoMessage(
   let audioBase64: string | undefined;
   let audioMimeType: string | undefined;
   try {
-    const ttsResult = await getDemoTTS().synthesize(agentText, {
-      voice: persona.ttsVoice,
-      speed: config.tts.speed,
-      format: config.tts.format,
-    });
+    const ttsResult = await withTimeout(
+      (_signal) =>
+        getDemoTTS().synthesize(agentText, {
+          voice: persona.ttsVoice,
+          speed: config.tts.speed,
+          format: config.tts.format,
+        }),
+      15_000,
+      'TTS_TIMEOUT',
+      'TTS timeout'
+    );
     audioBase64 = ttsResult.audio.toString('base64');
     audioMimeType = ttsResult.mimeType;
   } catch (err) {
-    console.error('[DemoService] TTS failed:', err);
-    // Non-fatal — text response still works
+    // TTS failure is non-fatal — text response still works
+    console.error('[DemoService] TTS failed (non-fatal):', err);
   }
 
   // ── Check if session should auto-end ────────────────────────────────────
@@ -276,8 +339,9 @@ export async function processDemoMessage(
   if (newElapsed >= config.constraints.maxSessionDurationSec - 30) endReason = 'time_warning';
 
   return {
-    messageId: `msg_${Date.now()}`,
+    messageId: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     text: agentText,
+    userText,
     audio: audioBase64,
     audioMimeType,
     processingMs: Date.now() - startTime,
@@ -377,12 +441,20 @@ export async function submitFeedback(
 
 async function endSession(sessionId: string, reason: string): Promise<void> {
   try {
+    // Fetch existing metadata to merge — avoids overwriting domain and other fields
+    const existing = await prisma.demoSession.findUnique({
+      where: { id: sessionId },
+      select: { metadata: true },
+    });
+    const existingMeta =
+      (existing?.metadata as Record<string, unknown>) ?? {};
+
     await prisma.demoSession.update({
       where: { id: sessionId },
       data: {
         status: 'completed',
         endedAt: new Date(),
-        metadata: { endReason: reason },
+        metadata: { ...existingMeta, endReason: reason },
       },
     });
     clearSessionCache(sessionId);

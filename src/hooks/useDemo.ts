@@ -49,6 +49,8 @@ export interface DemoState {
   error: string | null;
   summary: string | null;
   maxDurationSec: number;
+  /** True when session is 30s from ending — triggers a UI warning */
+  timeWarning: boolean;
 }
 
 interface DemoCallbacks {
@@ -81,6 +83,7 @@ export function useDemo(callbacks?: DemoCallbacks) {
     error: null,
     summary: null,
     maxDurationSec: 300,
+    timeWarning: false,
   });
 
   // ── Refs ──────────────────────────────────────────────────────────────────
@@ -219,13 +222,53 @@ export function useDemo(callbacks?: DemoCallbacks) {
     }
   }, [update, addTranscriptEntry, playAudio, startTimer, callbacks]);
 
+  // ── Stop Listening ────────────────────────────────────────────────────────
+  // Defined before endSession so it can be referenced in endSession's dep array.
+  const stopListening = useCallback(() => {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== 'inactive'
+    ) {
+      mediaRecorderRef.current.stop();
+      update({ isListening: false });
+    }
+  }, [update]);
+
+  // ── End Session ───────────────────────────────────────────────────────────
+  // Defined here (before sendTextMessage / sendAudioMessage) so both
+  // can safely include it in their useCallback dependency arrays.
+  const endSession = useCallback(async () => {
+    if (!sessionTokenRef.current) return;
+
+    try {
+      stopTimer();
+      stopListening();
+
+      update({ status: 'ended', isListening: false, isProcessing: false });
+
+      const res = await fetch(`${API_BASE}/end`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionToken: sessionTokenRef.current }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        update({ summary: data.summary });
+        callbacks?.onSessionEnd?.(data.summary);
+      }
+    } catch (err) {
+      console.error('[useDemo] End session error:', err);
+    }
+  }, [update, stopTimer, stopListening, callbacks]);
+
   // ── Send Text Message ─────────────────────────────────────────────────────
   const sendTextMessage = useCallback(
     async (text: string) => {
       if (!sessionTokenRef.current || !text.trim()) return;
 
       try {
-        update({ isProcessing: true, status: 'processing' });
+        update({ isProcessing: true, status: 'processing', error: null });
         addTranscriptEntry('user', text);
 
         const res = await fetch(`${API_BASE}/message`, {
@@ -249,6 +292,7 @@ export function useDemo(callbacks?: DemoCallbacks) {
           isProcessing: false,
           status: 'active',
           turnCount: data.turnCount,
+          timeWarning: data.shouldEnd && data.endReason === 'time_warning',
         });
 
         // Play audio response
@@ -256,20 +300,21 @@ export function useDemo(callbacks?: DemoCallbacks) {
           await playAudio(data.audio, data.audioMimeType);
         }
 
-        // Auto-end if needed
+        // Auto-end if session is truly over (not just a time warning)
         if (data.shouldEnd && data.endReason !== 'time_warning') {
           await endSession();
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to send message';
         update({
           isProcessing: false,
           status: 'active',
-          error: err.message,
+          error: message,
         });
-        callbacks?.onError?.(err.message);
+        callbacks?.onError?.(message);
       }
     },
-    [update, addTranscriptEntry, playAudio, callbacks]
+    [update, addTranscriptEntry, playAudio, endSession, callbacks]
   );
 
   // ── Send Audio Message ────────────────────────────────────────────────────
@@ -278,7 +323,7 @@ export function useDemo(callbacks?: DemoCallbacks) {
       if (!sessionTokenRef.current) return;
 
       try {
-        update({ isProcessing: true, status: 'processing', isListening: false });
+        update({ isProcessing: true, status: 'processing', isListening: false, error: null });
 
         // Convert blob to base64
         const arrayBuffer = await audioBlob.arrayBuffer();
@@ -303,33 +348,37 @@ export function useDemo(callbacks?: DemoCallbacks) {
 
         const data = await res.json();
 
-        // The API response contains the transcribed user text
-        // We add it via the response since we didn't have it before
-        addTranscriptEntry('user', '🎤 [Voice message]');
+        // Show actual transcribed user text returned from the server (not an emoji placeholder)
+        if (data.userText) {
+          addTranscriptEntry('user', data.userText);
+        }
         addTranscriptEntry('agent', data.text);
         update({
           isProcessing: false,
           status: 'active',
           turnCount: data.turnCount,
+          timeWarning: data.shouldEnd && data.endReason === 'time_warning',
         });
 
         if (data.audio) {
           await playAudio(data.audio, data.audioMimeType);
         }
 
+        // Auto-end if session is truly over (not just a time warning)
         if (data.shouldEnd && data.endReason !== 'time_warning') {
           await endSession();
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to process audio';
         update({
           isProcessing: false,
           status: 'active',
-          error: err.message,
+          error: message,
         });
-        callbacks?.onError?.(err.message);
+        callbacks?.onError?.(message);
       }
     },
-    [update, addTranscriptEntry, playAudio, callbacks]
+    [update, addTranscriptEntry, playAudio, endSession, callbacks]
   );
 
   // ── Microphone Control ────────────────────────────────────────────────────
@@ -373,41 +422,7 @@ export function useDemo(callbacks?: DemoCallbacks) {
     }
   }, [update, sendAudioMessage, callbacks]);
 
-  const stopListening = useCallback(() => {
-    if (
-      mediaRecorderRef.current &&
-      mediaRecorderRef.current.state !== 'inactive'
-    ) {
-      mediaRecorderRef.current.stop();
-      update({ isListening: false });
-    }
-  }, [update]);
 
-  // ── End Session ───────────────────────────────────────────────────────────
-  const endSession = useCallback(async () => {
-    if (!sessionTokenRef.current) return;
-
-    try {
-      stopTimer();
-      stopListening();
-
-      update({ status: 'ended', isListening: false, isProcessing: false });
-
-      const res = await fetch(`${API_BASE}/end`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionToken: sessionTokenRef.current }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        update({ summary: data.summary });
-        callbacks?.onSessionEnd?.(data.summary);
-      }
-    } catch (err) {
-      console.error('[useDemo] End session error:', err);
-    }
-  }, [update, stopTimer, stopListening, callbacks]);
 
   // ── Submit Feedback ───────────────────────────────────────────────────────
   const submitFeedback = useCallback(
@@ -454,8 +469,14 @@ export function useDemo(callbacks?: DemoCallbacks) {
       error: null,
       summary: null,
       maxDurationSec: 300,
+      timeWarning: false,
     });
   }, [stopTimer, stopListening]);
+
+  // ── Dismiss Error ──────────────────────────────────────────────────────────
+  const dismissError = useCallback(() => {
+    update({ error: null });
+  }, [update]);
 
   return {
     state,
@@ -465,6 +486,7 @@ export function useDemo(callbacks?: DemoCallbacks) {
     startListening,
     stopListening,
     submitFeedback,
+    dismissError,
     reset,
   };
 }

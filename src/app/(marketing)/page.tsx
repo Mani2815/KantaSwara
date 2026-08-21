@@ -275,10 +275,17 @@ export default function LandingPage() {
               </div>
               
               <p className={styles['final-cta__secondary-title']}>
-                Need more information?
+                Not ready to sign up?
               </p>
               
               <div className={styles['final-cta__secondary-actions']}>
+                <Link
+                  href="/demo"
+                  id="footer-cta-demo-btn"
+                  className={styles['final-cta__assistant-link']}
+                >
+                  Try Live Demo
+                </Link>
                 <Link
                   href="/contact"
                   className={styles['final-cta__assistant-link']}
