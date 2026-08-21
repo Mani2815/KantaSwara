@@ -1,14 +1,10 @@
 import { defineConfig } from 'prisma/config';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
 
-/**
- * Prisma 7 Configuration File
- *
- * Connection URLs are now configured here instead of schema.prisma.
- * - DATABASE_URL: Connection pooling (Transaction mode, port 6543) — used at runtime
- * - DIRECT_URL: Direct connection (port 5432) — used for Prisma Migrate
- *
- * See: https://pris.ly/d/config-datasource
- */
+dotenv.config({ path: path.resolve(__dirname, '.env.local') });
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+
 export default defineConfig({
   datasource: {
     url: process.env.DIRECT_URL || process.env.DATABASE_URL!,

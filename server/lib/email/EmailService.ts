@@ -20,6 +20,7 @@ import type {
   EmailPayload,
   RenderedEmail,
 } from './types';
+import { prisma } from '../prisma';
 
 export class EmailService {
   /**
@@ -27,6 +28,12 @@ export class EmailService {
    * validate → check preferences → render → rate-limit → send → log
    */
   async sendTemplate(options: SendEmailOptions): Promise<EmailSendResult> {
+    console.log('\n[DEBUG-EMAILSERVICE] sendTemplate called with:', {
+      to: options.to,
+      subject: options.subject,
+      templateKey: options.templateKey,
+      triggeredByEvent: options.triggeredByEvent,
+    });
     const toEmail =
       typeof options.to === 'string' ? options.to : options.to.email;
     const toName =
@@ -53,6 +60,65 @@ export class EmailService {
       return { success: false, emailLogId: logId, status: 'FAILED', error: msg };
     }
 
+    // 1.a Bounce Protection
+    try {
+      const hasBounced = await prisma.emailLog.findFirst({
+        where: {
+          recipient: toEmail,
+          status: 'BOUNCED',
+        },
+      });
+
+      if (hasBounced) {
+        const logId = await EmailLogger.createLog({
+          recipient: toEmail,
+          recipientName: toName,
+          subject: options.subject,
+          templateKey: options.templateKey,
+          category: options.category,
+          priority: options.priority,
+          organizationId: options.organizationId,
+          triggeredBy: options.triggeredBy,
+          triggeredByEvent: options.triggeredByEvent,
+          variables: options.variables,
+        });
+        await EmailLogger.markSkipped(logId, 'Recipient has previously bounced');
+        return { success: false, emailLogId: logId, status: 'SKIPPED', skipped: true, skipReason: 'Recipient bounced' };
+      }
+    } catch (err) {
+      console.error('[EmailService] Bounce protection lookup failed:', err);
+    }
+
+    // 1.b Idempotency / Duplicate Protection
+    if (options.triggeredByEvent) {
+      try {
+        const recentSend = await prisma.emailLog.findFirst({
+          where: {
+            recipient: toEmail,
+            triggeredByEvent: options.triggeredByEvent,
+            templateKey: options.templateKey,
+            ...(options.organizationId ? { organizationId: options.organizationId } : {}),
+            createdAt: {
+              gte: new Date(Date.now() - 5 * 60 * 1000), // last 5 minutes
+            },
+          },
+        });
+
+        if (recentSend) {
+          console.log(`[DEBUG-EMAILSERVICE] SKIPPED: Idempotency triggered by recentSend: ${recentSend.id}`);
+          return {
+            success: true, // Treat as success to not block upstream
+            emailLogId: recentSend.id,
+            status: 'SKIPPED',
+            skipped: true,
+            skipReason: 'Duplicate send prevented (idempotency)',
+          };
+        }
+      } catch (err) {
+        console.error('[EmailService] Idempotency lookup failed:', err);
+      }
+    }
+
     // 2. Check user email preferences (if userId is in variables)
     const templateEntry = getTemplateEntry(options.templateKey);
     const isMandatory =
@@ -65,6 +131,7 @@ export class EmailService {
         false
       );
       if (!allowed) {
+        console.log(`[DEBUG-EMAILSERVICE] SKIPPED: User preferences: ${reason}`);
         const logId = await EmailLogger.createLog({
           recipient: toEmail,
           subject: options.subject,
@@ -89,6 +156,7 @@ export class EmailService {
     // 3. Check rate limits
     const rateCheck = EmailRateLimiter.check(toEmail, options.organizationId);
     if (!rateCheck.allowed) {
+      console.log(`[DEBUG-EMAILSERVICE] FAILED: Rate limit: ${rateCheck.reason}`);
       const logId = await EmailLogger.createLog({
         recipient: toEmail,
         subject: options.subject,
@@ -177,10 +245,13 @@ export class EmailService {
     };
 
     const provider = getEmailProvider();
+    console.log(`[DEBUG-EMAILSERVICE] Provider acquired: ${provider.providerName}`);
+    console.log(`[DEBUG-EMAILSERVICE] Calling provider.send()`);
     const result = await provider.send(payload);
 
     // 9. Update log with result
     if (result.success) {
+      console.log(`[DEBUG-EMAILSERVICE] Provider SUCCESS. ID: ${result.providerId}`);
       await EmailLogger.markSent(logId, result.providerId, result.providerResponse);
       return {
         success: true,

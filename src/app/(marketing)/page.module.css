@@ -593,6 +593,22 @@
   flex-direction: column;
 }
 
+.operations__list {
+  list-style-type: disc;
+  padding-left: var(--space-5);
+  margin-top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.operations__list_item {
+  font-family: var(--font-body);
+  font-size: var(--text-body-lg);
+  line-height: var(--leading-loose);
+  color: var(--color-text-secondary);
+}
+
 .operations__image_wrapper {
   position: relative;
   width: 100%;

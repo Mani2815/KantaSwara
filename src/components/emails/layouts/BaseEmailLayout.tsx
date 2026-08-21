@@ -29,6 +29,10 @@ export default function BaseEmailLayout({
   currentYear = new Date().getFullYear(),
   children,
 }: BaseEmailLayoutProps) {
+  // Use localhost in dev, or actual URL in prod for image assets
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const logoUrl = `${baseUrl}/images/kantaswara-logo.png`;
+
   return (
     <Html>
       <Head />
@@ -37,8 +41,13 @@ export default function BaseEmailLayout({
         <Container style={container}>
           {/* Header */}
           <Section style={header}>
-            {/* Replace with actual logo URL once available */}
-            <Text style={logoText}>{appName}</Text>
+            <Img
+              src={logoUrl}
+              alt={appName}
+              width="210"
+              height="55"
+              style={logoImage}
+            />
           </Section>
 
           {/* Hero Band / Top Border */}
@@ -75,17 +84,19 @@ export default function BaseEmailLayout({
 }
 
 const main = {
-  backgroundColor: '#f9fafb',
+  backgroundColor: '#09090b', // zinc-950
   fontFamily:
     '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Ubuntu, sans-serif',
+  padding: '40px 0',
 };
 
 const container = {
-  backgroundColor: '#ffffff',
-  margin: '40px auto',
+  backgroundColor: '#18181b', // zinc-900
+  margin: '0 auto',
   padding: '0',
-  borderRadius: '8px',
-  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+  borderRadius: '12px',
+  border: '1px solid #27272a', // zinc-800
+  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)',
   maxWidth: '600px',
   overflow: 'hidden',
 };
@@ -95,23 +106,21 @@ const header = {
   textAlign: 'center' as const,
 };
 
-const logoText = {
-  fontSize: '24px',
-  fontWeight: 'bold',
-  color: '#111827',
-  margin: '0',
-  letterSpacing: '-0.5px',
+const logoImage = {
+  margin: '0 auto',
+  display: 'block',
 };
 
 const heroBand = {
-  height: '4px',
+  height: '2px',
   width: '100%',
-  backgroundColor: '#4F46E5', // KantaSwara brand primary (Indigo 600)
-  background: 'linear-gradient(90deg, #4F46E5 0%, #7C3AED 100%)',
+  backgroundColor: '#ff6600', // KantaSwara brand orange
+  background: 'linear-gradient(90deg, #ff6600 0%, #ff8533 100%)',
 };
 
 const content = {
   padding: '40px',
+  color: '#e4e4e7', // zinc-200
 };
 
 const footer = {
@@ -120,18 +129,18 @@ const footer = {
 };
 
 const divider = {
-  borderColor: '#e5e7eb',
+  borderColor: '#27272a', // zinc-800
   margin: '0 0 24px 0',
 };
 
 const footerText = {
   fontSize: '12px',
   lineHeight: '20px',
-  color: '#6b7280',
+  color: '#a1a1aa', // zinc-400
   margin: '0 0 12px 0',
 };
 
 const link = {
-  color: '#4F46E5',
+  color: '#ff6600',
   textDecoration: 'none',
 };

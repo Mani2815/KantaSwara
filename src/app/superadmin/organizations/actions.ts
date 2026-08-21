@@ -2,6 +2,7 @@
 
 import { supabaseAdmin } from '@server/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
+import { emailEventBus } from '@/lib/email';
 
 export async function deleteOrganization(organizationId: string) {
   if (!organizationId) {
@@ -46,7 +47,7 @@ export async function approveOrganization(organizationId: string) {
   }
 
   try {
-    const { error } = await supabaseAdmin
+    const { data: orgData, error } = await supabaseAdmin
       .from('organizations')
       .update({
         status: 'approved',
@@ -55,10 +56,54 @@ export async function approveOrganization(organizationId: string) {
         approved_at: new Date().toISOString(),
         activation_date: new Date().toISOString(),
       })
-      .eq('id', organizationId);
+      .eq('id', organizationId)
+      .select('name')
+      .single();
 
     if (error) {
       return { success: false, error: error.message };
+    }
+
+    // Fetch org profiles to find recipient email
+    const { data: profiles } = await supabaseAdmin
+      .from('profiles')
+      .select('full_name, email, role')
+      .eq('organization_id', organizationId);
+
+    const admin =
+      profiles?.find((p) => p.role === 'org_admin' && p.email) ||
+      profiles?.find((p) => p.email);
+
+    console.log('\n[DEBUG-ACTIONS] Recipient Resolution:');
+    console.log({
+      orgContactEmail: orgData?.contact_email,
+      profilesFetched: profiles?.length,
+      adminResolved: !!admin,
+      adminEmail: admin?.email,
+      adminName: admin?.full_name
+    });
+
+    if (orgData && admin?.email) {
+      try {
+        console.log('\n[DEBUG-ACTIONS] EventBus Handlers before emit:');
+        const handlers = (emailEventBus as any).handlers?.get('OrganizationApproved');
+        console.log(`OrganizationApproved handler count: ${handlers?.length || 0}`);
+        if (!handlers || handlers.length === 0) {
+          console.warn('[DEBUG-ACTIONS] WARNING: No handlers registered for OrganizationApproved!');
+        }
+
+        await emailEventBus.emit('OrganizationApproved', {
+          organizationId,
+          organizationName: orgData.name,
+          adminEmail: admin.email,
+          adminName: admin.full_name || 'Organization Admin',
+          dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard`,
+        });
+      } catch (e) {
+        console.error('Failed to emit OrganizationApproved event:', e);
+      }
+    } else {
+      console.warn(`[approveOrganization] No email found for organization ${organizationId}`);
     }
 
     revalidatePath('/superadmin/organizations');
@@ -74,7 +119,7 @@ export async function rejectOrganization(organizationId: string, reason: string)
   }
 
   try {
-    const { error } = await supabaseAdmin
+    const { data: orgData, error } = await supabaseAdmin
       .from('organizations')
       .update({
         status: 'rejected',
@@ -83,10 +128,38 @@ export async function rejectOrganization(organizationId: string, reason: string)
         rejected_at: new Date().toISOString(),
         rejection_reason: reason,
       })
-      .eq('id', organizationId);
+      .eq('id', organizationId)
+      .select('name')
+      .single();
 
     if (error) {
       return { success: false, error: error.message };
+    }
+
+    // Fetch org profiles to find recipient email
+    const { data: profiles } = await supabaseAdmin
+      .from('profiles')
+      .select('full_name, email, role')
+      .eq('organization_id', organizationId);
+
+    const admin =
+      profiles?.find((p) => p.role === 'org_admin' && p.email) ||
+      profiles?.find((p) => p.email);
+
+    if (orgData && admin?.email) {
+      try {
+        await emailEventBus.emit('OrganizationRejected', {
+          organizationId,
+          organizationName: orgData.name,
+          adminEmail: admin.email,
+          adminName: admin.full_name || 'Organization Admin',
+          reason: reason || 'Your application did not meet our current requirements.',
+        });
+      } catch (e) {
+        console.error('Failed to emit OrganizationRejected event:', e);
+      }
+    } else {
+      console.warn(`[rejectOrganization] No email found for organization ${organizationId}`);
     }
 
     revalidatePath('/superadmin/organizations');
