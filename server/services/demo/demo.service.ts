@@ -66,6 +66,69 @@ async function withTimeout<T>(
   }
 }
 
+// =============================================================================
+// RETRY HELPER (1x retry only)
+// =============================================================================
+
+/**
+ * Wraps a function with a single retry on failure.
+ * The errorMapper converts raw errors into DemoErrors on final failure.
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  errorCode: string,
+  errorMessage: string,
+  statusCode: number = 502
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (firstErr) {
+    // If it's already a DemoError from validation (not a provider error), rethrow
+    if (
+      firstErr instanceof DemoError &&
+      ['EMPTY_AUDIO', 'SESSION_NOT_FOUND', 'SESSION_ENDED', 'SESSION_EXPIRED', 'MAX_TURNS', 'EMPTY_INPUT', 'MESSAGE_RATE_LIMITED'].includes(firstErr.code)
+    ) {
+      throw firstErr;
+    }
+
+    console.warn(`[DemoService] ${errorCode} — retrying once...`, firstErr instanceof Error ? firstErr.message : firstErr);
+
+    try {
+      return await fn();
+    } catch (retryErr) {
+      // If retry also fails, throw user-friendly error
+      if (retryErr instanceof DemoError) throw retryErr;
+      throw new DemoError(errorCode, errorMessage, statusCode);
+    }
+  }
+}
+
+// =============================================================================
+// PER-SESSION MESSAGE RATE LIMITER
+// =============================================================================
+
+const sessionMessageTimestamps = new Map<string, number>();
+
+/**
+ * Checks if a session is sending messages too fast.
+ * Max 1 message per 2 seconds per session.
+ */
+function checkSessionMessageRate(sessionId: string): void {
+  const now = Date.now();
+  const lastTime = sessionMessageTimestamps.get(sessionId) || 0;
+
+  if (now - lastTime < 2000) {
+    throw new DemoError(
+      'MESSAGE_RATE_LIMITED',
+      'Please wait a moment before sending another message.',
+      429
+    );
+  }
+
+  sessionMessageTimestamps.set(sessionId, now);
+}
+
+
 // ── Provider Resolution (via Registry instead of hardcoded singletons) ───────
 function getDemoSTT() {
   return getSTTProvider(DEMO_AGENT_CONFIG.providers.stt);
@@ -218,26 +281,27 @@ export async function processDemoMessage(
     );
   }
 
+  // ── Per-session message rate limit ──────────────────────────────────────
+  checkSessionMessageRate(session.id);
+
   // ── Get user text (from text input or audio transcription) ──────────────
   let userText = input.text || '';
 
   if (input.audio && !userText) {
     const audioBuffer = Buffer.from(input.audio, 'base64');
 
-    const sttResult = await withTimeout(
-      (_signal) =>
-        getDemoSTT().transcribe(audioBuffer, input.audioMimeType || 'audio/webm'),
-      15_000,
-      'STT_TIMEOUT',
-      "I'm having trouble processing your audio right now. Please try speaking again or switch to text mode."
-    ).catch((err) => {
-      if (err instanceof DemoError) throw err;
-      throw new DemoError(
-        'STT_ERROR',
-        "I couldn't transcribe your audio. Please try again or switch to text input.",
-        502
-      );
-    });
+    const sttResult = await withRetry(
+      () =>
+        withTimeout(
+          (_signal) =>
+            getDemoSTT().transcribe(audioBuffer, input.audioMimeType || 'audio/webm'),
+          15_000,
+          'STT_TIMEOUT',
+          "I'm having trouble processing your audio right now. Please try speaking again or switch to text mode."
+        ),
+      'STT_ERROR',
+      "I couldn't transcribe your audio. Please try again or switch to text input."
+    );
 
     userText = sttResult.text;
 
@@ -270,26 +334,24 @@ export async function processDemoMessage(
     maxContextMessages: config.constraints.maxContextMessages,
   });
 
-  // ── Generate LLM response ──────────────────────────────────────────────
-  const llmResponse = await withTimeout(
-    (_signal) =>
-      getDemoLLM().complete(messages, {
-        model: config.llm.model,
-        temperature: config.llm.temperature,
-        maxTokens: config.llm.maxTokens,
-        topP: config.llm.topP,
-      }),
-    30_000,
-    'LLM_TIMEOUT',
-    "I'm taking a moment to think. Please try your message again."
-  ).catch((err) => {
-    if (err instanceof DemoError) throw err;
-    throw new DemoError(
-      'LLM_ERROR',
-      "I had trouble generating a response. Please try again.",
-      502
-    );
-  });
+  // ── Generate LLM response (with 1x retry) ─────────────────────────────
+  const llmResponse = await withRetry(
+    () =>
+      withTimeout(
+        (_signal) =>
+          getDemoLLM().complete(messages, {
+            model: config.llm.model,
+            temperature: config.llm.temperature,
+            maxTokens: config.llm.maxTokens,
+            topP: config.llm.topP,
+          }),
+        30_000,
+        'LLM_TIMEOUT',
+        "I'm taking a moment to think. Please try your message again."
+      ),
+    'LLM_ERROR',
+    "I had trouble generating a response. Please try again."
+  );
 
   const agentText = llmResponse.text;
 
@@ -394,8 +456,9 @@ export async function endDemoSession(
     },
   });
 
-  // Clean up cache
+  // Clean up caches
   clearSessionCache(session.id);
+  sessionMessageTimestamps.delete(session.id);
 
   return {
     summary,
@@ -458,6 +521,7 @@ async function endSession(sessionId: string, reason: string): Promise<void> {
       },
     });
     clearSessionCache(sessionId);
+    sessionMessageTimestamps.delete(sessionId);
   } catch {
     // Non-fatal
   }
