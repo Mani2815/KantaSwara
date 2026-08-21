@@ -18,6 +18,7 @@ import { OpenAILLMProvider } from '../providers/llm/openai.provider';
 import { GroqLLMProvider } from '../providers/llm/groq.provider';
 import { OpenAITTSProvider } from '../providers/tts/openai-tts.provider';
 import { ElevenLabsTTSProvider } from '../providers/tts/elevenlabs.provider';
+import { DeepgramTTSProvider } from '../providers/tts/deepgram-tts.provider';
 import { setFailoverChain } from '../providers/failover/failover-manager.service';
 
 // ── Provider Factories ──────────────────────────────────────────────────────
@@ -143,6 +144,7 @@ registerLLMProvider('groq', (apiKey) => new GroqLLMProvider(apiKey));
 
 registerTTSProvider('openai-tts', (apiKey) => new OpenAITTSProvider(apiKey));
 registerTTSProvider('elevenlabs', (apiKey) => new ElevenLabsTTSProvider(apiKey));
+registerTTSProvider('deepgram-tts', (apiKey) => new DeepgramTTSProvider(apiKey));
 
 // ── Default Failover Chains ─────────────────────────────────────────────────
 // Priority order: primary provider first, fallbacks after.
@@ -159,7 +161,8 @@ setFailoverChain('llm', [
 ]);
 
 setFailoverChain('tts', [
-  { providerId: 'openai-tts', priority: 1, costPer1kTokens: 0.015 },
-  { providerId: 'elevenlabs', priority: 2, costPer1kTokens: 0.03 },
+  { providerId: 'deepgram-tts', priority: 1, costPer1kTokens: 0.015 },
+  { providerId: 'openai-tts', priority: 2, costPer1kTokens: 0.015 },
+  { providerId: 'elevenlabs', priority: 3, costPer1kTokens: 0.03 },
 ]);
 

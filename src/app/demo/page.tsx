@@ -18,6 +18,8 @@ import {
   GraduationCap,
   Landmark,
   Sparkles,
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -152,6 +154,7 @@ export default function DemoPage() {
     startListening,
     stopListening,
     submitFeedback,
+    dismissError,
     reset,
   } = useDemo();
 
@@ -159,6 +162,13 @@ export default function DemoPage() {
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [state.transcript]);
+
+  // Force text mode if voice is not supported in this browser
+  useEffect(() => {
+    if (!state.voiceSupported && inputMode === 'voice') {
+      setInputMode('text');
+    }
+  }, [state.voiceSupported, inputMode]);
 
   // ── Start demo with selected domain ─────────────────────────────────────
   const handleStartDemo = useCallback(async () => {
@@ -393,6 +403,36 @@ export default function DemoPage() {
           </div>
         </div>
 
+        {/* ── Time Warning Banner ─────────────────────────────────────────── */}
+        {state.timeWarning && isSessionActive && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2.5 bg-amber-500/10 border border-amber-500/30 text-amber-600 rounded-xl px-4 py-3 text-sm font-medium"
+          >
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <span>Your demo session ends in about 30 seconds. Wrap up your conversation!</span>
+          </motion.div>
+        )}
+
+        {/* ── Dismissable Error Banner ────────────────────────────────────── */}
+        {state.error && isSessionActive && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-between gap-2.5 bg-red-500/10 border border-red-500/30 text-red-600 rounded-xl px-4 py-3 text-sm"
+          >
+            <span>{state.error}</span>
+            <button
+              onClick={dismissError}
+              className="flex-shrink-0 p-0.5 rounded hover:bg-red-500/10 transition-colors"
+              title="Dismiss"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
+
         {/* ── Main Content ───────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* ── Left Panel: Agent + Controls ──────────────────────────────── */}
@@ -536,14 +576,18 @@ export default function DemoPage() {
                     <MessageSquare className="w-3.5 h-3.5" /> Text
                   </button>
                   <button
-                    onClick={() => setInputMode('voice')}
+                    onClick={() => state.voiceSupported && setInputMode('voice')}
+                    disabled={!state.voiceSupported}
+                    title={!state.voiceSupported ? 'Voice recording is not supported in your browser' : undefined}
                     className={`flex-1 py-2 px-3 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors ${
-                      inputMode === 'voice'
-                        ? 'bg-[var(--color-primary)] text-white'
-                        : 'bg-[var(--color-bg-base)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface)]'
+                      !state.voiceSupported
+                        ? 'bg-[var(--color-bg-base)] text-[var(--color-text-muted)] opacity-50 cursor-not-allowed'
+                        : inputMode === 'voice'
+                          ? 'bg-[var(--color-primary)] text-white'
+                          : 'bg-[var(--color-bg-base)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface)]'
                     }`}
                   >
-                    <Mic className="w-3.5 h-3.5" /> Voice
+                    <Mic className="w-3.5 h-3.5" /> Voice{!state.voiceSupported ? ' (N/A)' : ''}
                   </button>
                 </div>
               </div>
@@ -660,6 +704,16 @@ export default function DemoPage() {
                   </div>
                 )}
 
+                {/* Speaking indicator */}
+                {state.isPlaying && !state.isProcessing && (
+                  <div className="flex justify-start">
+                    <div className="bg-[var(--color-bg-surface)] border border-violet-500/30 rounded-2xl rounded-bl-md px-4 py-2.5 flex items-center gap-2">
+                      <Volume2 className="w-4 h-4 text-violet-500 animate-pulse" />
+                      <span className="text-xs text-violet-500 font-medium">{state.agentName} is speaking...</span>
+                    </div>
+                  </div>
+                )}
+
                 <div ref={transcriptEndRef} />
               </div>
             </div>
@@ -698,10 +752,10 @@ export default function DemoPage() {
                     ) : (
                       <button
                         onClick={startListening}
-                        disabled={state.isProcessing}
+                        disabled={state.isProcessing || state.isPlaying}
                         className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 text-white font-medium py-3 px-8 rounded-xl flex items-center gap-2 transition-all"
                       >
-                        <Mic className="w-5 h-5" /> Hold to Speak
+                        <Mic className="w-5 h-5" /> Start Recording
                       </button>
                     )}
                   </div>
@@ -778,12 +832,20 @@ export default function DemoPage() {
                   <p className="text-[var(--color-text-secondary)] text-sm mb-4">
                     Get a custom AI voice agent tailored to your business. No coding required.
                   </p>
-                  <Link
-                    href="/register"
-                    className="inline-flex items-center gap-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-medium py-3 px-6 rounded-xl transition-all shadow-sm"
-                  >
-                    Get Started <ArrowRight className="w-4 h-4" />
-                  </Link>
+                  <div className="flex items-center justify-center gap-3 flex-wrap">
+                    <Link
+                      href="/register"
+                      className="inline-flex items-center gap-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-medium py-3 px-6 rounded-xl transition-all shadow-sm"
+                    >
+                      Get Started <ArrowRight className="w-4 h-4" />
+                    </Link>
+                    <button
+                      onClick={handleBackToSelection}
+                      className="inline-flex items-center gap-2 bg-[var(--color-bg-surface)] border border-[var(--color-border-default)] hover:bg-[var(--color-bg-base)] text-[var(--color-text-primary)] font-medium py-3 px-6 rounded-xl transition-all"
+                    >
+                      <RefreshCw className="w-4 h-4" /> Try Another Demo
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

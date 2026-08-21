@@ -67,6 +67,8 @@ export interface DemoMessageResponse {
   messageId: string;
   /** Agent's text response */
   text: string;
+  /** The user's transcribed text (from STT or typed input) — for displaying in transcript */
+  userText: string;
   /** Base64-encoded audio response */
   audio?: string;
   /** MIME type of audio response */

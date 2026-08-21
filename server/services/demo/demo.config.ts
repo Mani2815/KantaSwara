@@ -10,15 +10,18 @@ export const DEMO_AGENT_CONFIG = {
   persona: 'KantaSwara AI Sales & Demo Representative',
 
   // ── Provider defaults ─────────────────────────────────────────────────────
+  // NOTE: OpenAI providers are disabled because the system OPENAI_API_KEY env var
+  // is contaminated with an OpenRouter key (sk-or-v1...). We use Groq + ElevenLabs
+  // + Deepgram instead — all have valid keys in .env.local.
   providers: {
-    stt: 'openai-whisper',
-    llm: 'openai',
-    tts: 'openai-tts',
+    stt: 'deepgram',
+    llm: 'groq',
+    tts: 'deepgram-tts',
   },
 
   // ── LLM settings ──────────────────────────────────────────────────────────
   llm: {
-    model: 'gpt-4o-mini',
+    model: 'openai/gpt-oss-120b', // Available Groq model — capable reasoning model
     temperature: 0.7,
     maxTokens: 300, // Keep responses concise for voice
     topP: 0.9,
@@ -26,8 +29,8 @@ export const DEMO_AGENT_CONFIG = {
 
   // ── TTS settings ──────────────────────────────────────────────────────────
   tts: {
-    voice: 'nova',      // Warm, natural female voice
-    speed: 1.05,        // Slightly faster for snappy feel
+    voice: 'aura-asteria-en', // Deepgram Aura: warm, natural female — free tier eligible
+    speed: 1.05,        // Note: Deepgram Aura does not use speed param, kept for config consistency
     format: 'mp3',
   },
 

@@ -41,7 +41,7 @@ const HEALTHCARE_PERSONA: DomainPersona = {
     'Department information',
     'Emergency services',
   ],
-  ttsVoice: 'nova',
+  ttsVoice: 'aura-asteria-en', // Deepgram Aura: warm, natural female voice
   greeting: `Hello! I'm Ananya, your AI receptionist at City General Hospital. I can help you with booking appointments, checking doctor availability, hospital timings, and department information. How may I assist you today?`,
 
   systemPrompt: `You are Ananya, an AI-powered hospital receptionist at City General Hospital. This is a demo by KantaSwara to showcase AI voice agents for healthcare.
@@ -114,7 +114,7 @@ const EDUCATION_PERSONA: DomainPersona = {
     'Eligibility criteria',
     'Hostel & campus life',
   ],
-  ttsVoice: 'shimmer',
+  ttsVoice: 'aura-luna-en', // Deepgram Aura: clear, professional female voice
   greeting: `Hi there! I'm Kavitha, your AI admissions assistant at Prestige University. Whether you're looking for course details, admission requirements, fee structures, or scholarship opportunities — I'm here to guide you. What would you like to know?`,
 
   systemPrompt: `You are Kavitha, an AI-powered admissions assistant at Prestige University. This is a demo by KantaSwara to showcase AI voice agents for education.
@@ -210,7 +210,7 @@ const BANKING_PERSONA: DomainPersona = {
     'Branch & ATM locator',
     'Banking FAQs',
   ],
-  ttsVoice: 'alloy',
+  ttsVoice: 'aura-stella-en', // Deepgram Aura: friendly, confident female voice
   greeting: `Welcome to Horizon National Bank! I'm Priya, your AI customer support executive. I can help you with information about loans, credit cards, account services, branch locations, and more. How can I assist you today?`,
 
   systemPrompt: `You are Priya, an AI-powered customer support executive at Horizon National Bank. This is a demo by KantaSwara to showcase AI voice agents for banking.

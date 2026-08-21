@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { motion, Variants } from 'framer-motion';
-import { ArrowRight, BarChart2 } from 'lucide-react';
+import { ArrowRight, Mic } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 // Sonic Waveform Canvas Component
@@ -161,13 +162,25 @@ const SonicWaveformHero = () => {
                     animate="visible"
                     className="flex flex-col sm:flex-row items-center justify-center gap-4"
                 >
-                    <button className="px-8 py-4 bg-white text-black font-semibold rounded-lg shadow-lg hover:bg-gray-200 transition-colors duration-300 flex items-center gap-2">
-                        Start Building Your AI Employee
+                    {/* Primary CTA — Try Live Demo */}
+                    <Link
+                        href="/demo"
+                        id="hero-try-demo-btn"
+                        className="px-8 py-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg shadow-lg shadow-orange-500/25 transition-all duration-300 flex items-center gap-2 hover:scale-[1.02]"
+                    >
+                        <Mic className="h-5 w-5" />
+                        Try Live Demo
+                    </Link>
+
+                    {/* Secondary CTA — Sign Up */}
+                    <Link
+                        href="/register"
+                        id="hero-signup-btn"
+                        className="px-8 py-4 bg-black text-white border border-white/20 font-semibold rounded-lg shadow-lg hover:bg-white/5 transition-colors duration-300 flex items-center gap-2"
+                    >
+                        Sign Up Free
                         <ArrowRight className="h-5 w-5" />
-                    </button>
-                    <button className="px-8 py-4 bg-black text-white border border-white/20 font-semibold rounded-lg shadow-lg hover:bg-white/5 transition-colors duration-300 flex items-center gap-2">
-                        Explore Solutions
-                    </button>
+                    </Link>
                 </motion.div>
             </div>
         </div>

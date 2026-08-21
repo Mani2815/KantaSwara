@@ -34,6 +34,101 @@ import type {
   EndDemoResponse,
 } from './demo.types';
 
+// =============================================================================
+// TIMEOUT HELPER
+// =============================================================================
+
+/**
+ * Wraps a promise with an AbortSignal-based timeout.
+ * Throws a DemoError with a user-friendly message if the timeout is exceeded.
+ */
+async function withTimeout<T>(
+  fn: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number,
+  errorCode: string,
+  errorMessage: string
+): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const result = await fn(controller.signal);
+    clearTimeout(timer);
+    return result;
+  } catch (err: unknown) {
+    clearTimeout(timer);
+    if (
+      err instanceof Error &&
+      (err.name === 'AbortError' || controller.signal.aborted)
+    ) {
+      throw new DemoError(errorCode, errorMessage, 504);
+    }
+    throw err;
+  }
+}
+
+// =============================================================================
+// RETRY HELPER (1x retry only)
+// =============================================================================
+
+/**
+ * Wraps a function with a single retry on failure.
+ * The errorMapper converts raw errors into DemoErrors on final failure.
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  errorCode: string,
+  errorMessage: string,
+  statusCode: number = 502
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (firstErr) {
+    // If it's already a DemoError from validation (not a provider error), rethrow
+    if (
+      firstErr instanceof DemoError &&
+      ['EMPTY_AUDIO', 'SESSION_NOT_FOUND', 'SESSION_ENDED', 'SESSION_EXPIRED', 'MAX_TURNS', 'EMPTY_INPUT', 'MESSAGE_RATE_LIMITED'].includes(firstErr.code)
+    ) {
+      throw firstErr;
+    }
+
+    console.warn(`[DemoService] ${errorCode} — retrying once...`, firstErr instanceof Error ? firstErr.message : firstErr);
+
+    try {
+      return await fn();
+    } catch (retryErr) {
+      // If retry also fails, throw user-friendly error
+      if (retryErr instanceof DemoError) throw retryErr;
+      throw new DemoError(errorCode, errorMessage, statusCode);
+    }
+  }
+}
+
+// =============================================================================
+// PER-SESSION MESSAGE RATE LIMITER
+// =============================================================================
+
+const sessionMessageTimestamps = new Map<string, number>();
+
+/**
+ * Checks if a session is sending messages too fast.
+ * Max 1 message per 2 seconds per session.
+ */
+function checkSessionMessageRate(sessionId: string): void {
+  const now = Date.now();
+  const lastTime = sessionMessageTimestamps.get(sessionId) || 0;
+
+  if (now - lastTime < 2000) {
+    throw new DemoError(
+      'MESSAGE_RATE_LIMITED',
+      'Please wait a moment before sending another message.',
+      429
+    );
+  }
+
+  sessionMessageTimestamps.set(sessionId, now);
+}
+
+
 // ── Provider Resolution (via Registry instead of hardcoded singletons) ───────
 function getDemoSTT() {
   return getSTTProvider(DEMO_AGENT_CONFIG.providers.stt);
@@ -186,21 +281,34 @@ export async function processDemoMessage(
     );
   }
 
+  // ── Per-session message rate limit ──────────────────────────────────────
+  checkSessionMessageRate(session.id);
+
   // ── Get user text (from text input or audio transcription) ──────────────
   let userText = input.text || '';
 
   if (input.audio && !userText) {
     const audioBuffer = Buffer.from(input.audio, 'base64');
-    const sttResult = await getDemoSTT().transcribe(
-      audioBuffer,
-      input.audioMimeType || 'audio/webm'
+
+    const sttResult = await withRetry(
+      () =>
+        withTimeout(
+          (_signal) =>
+            getDemoSTT().transcribe(audioBuffer, input.audioMimeType || 'audio/webm'),
+          15_000,
+          'STT_TIMEOUT',
+          "I'm having trouble processing your audio right now. Please try speaking again or switch to text mode."
+        ),
+      'STT_ERROR',
+      "I couldn't transcribe your audio. Please try again or switch to text input."
     );
+
     userText = sttResult.text;
 
     if (!userText.trim()) {
       throw new DemoError(
         'EMPTY_AUDIO',
-        'I couldn\'t catch that. Could you please speak again?',
+        "I couldn't catch that. Could you please speak again?",
         400
       );
     }
@@ -226,13 +334,24 @@ export async function processDemoMessage(
     maxContextMessages: config.constraints.maxContextMessages,
   });
 
-  // ── Generate LLM response ──────────────────────────────────────────────
-  const llmResponse = await getDemoLLM().complete(messages, {
-    model: config.llm.model,
-    temperature: config.llm.temperature,
-    maxTokens: config.llm.maxTokens,
-    topP: config.llm.topP,
-  });
+  // ── Generate LLM response (with 1x retry) ─────────────────────────────
+  const llmResponse = await withRetry(
+    () =>
+      withTimeout(
+        (_signal) =>
+          getDemoLLM().complete(messages, {
+            model: config.llm.model,
+            temperature: config.llm.temperature,
+            maxTokens: config.llm.maxTokens,
+            topP: config.llm.topP,
+          }),
+        30_000,
+        'LLM_TIMEOUT',
+        "I'm taking a moment to think. Please try your message again."
+      ),
+    'LLM_ERROR',
+    "I had trouble generating a response. Please try again."
+  );
 
   const agentText = llmResponse.text;
 
@@ -247,16 +366,22 @@ export async function processDemoMessage(
   let audioBase64: string | undefined;
   let audioMimeType: string | undefined;
   try {
-    const ttsResult = await getDemoTTS().synthesize(agentText, {
-      voice: persona.ttsVoice,
-      speed: config.tts.speed,
-      format: config.tts.format,
-    });
+    const ttsResult = await withTimeout(
+      (_signal) =>
+        getDemoTTS().synthesize(agentText, {
+          voice: persona.ttsVoice,
+          speed: config.tts.speed,
+          format: config.tts.format,
+        }),
+      15_000,
+      'TTS_TIMEOUT',
+      'TTS timeout'
+    );
     audioBase64 = ttsResult.audio.toString('base64');
     audioMimeType = ttsResult.mimeType;
   } catch (err) {
-    console.error('[DemoService] TTS failed:', err);
-    // Non-fatal — text response still works
+    // TTS failure is non-fatal — text response still works
+    console.error('[DemoService] TTS failed (non-fatal):', err);
   }
 
   // ── Check if session should auto-end ────────────────────────────────────
@@ -276,8 +401,9 @@ export async function processDemoMessage(
   if (newElapsed >= config.constraints.maxSessionDurationSec - 30) endReason = 'time_warning';
 
   return {
-    messageId: `msg_${Date.now()}`,
+    messageId: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     text: agentText,
+    userText,
     audio: audioBase64,
     audioMimeType,
     processingMs: Date.now() - startTime,
@@ -330,8 +456,9 @@ export async function endDemoSession(
     },
   });
 
-  // Clean up cache
+  // Clean up caches
   clearSessionCache(session.id);
+  sessionMessageTimestamps.delete(session.id);
 
   return {
     summary,
@@ -377,15 +504,24 @@ export async function submitFeedback(
 
 async function endSession(sessionId: string, reason: string): Promise<void> {
   try {
+    // Fetch existing metadata to merge — avoids overwriting domain and other fields
+    const existing = await prisma.demoSession.findUnique({
+      where: { id: sessionId },
+      select: { metadata: true },
+    });
+    const existingMeta =
+      (existing?.metadata as Record<string, unknown>) ?? {};
+
     await prisma.demoSession.update({
       where: { id: sessionId },
       data: {
         status: 'completed',
         endedAt: new Date(),
-        metadata: { endReason: reason },
+        metadata: { ...existingMeta, endReason: reason },
       },
     });
     clearSessionCache(sessionId);
+    sessionMessageTimestamps.delete(sessionId);
   } catch {
     // Non-fatal
   }
