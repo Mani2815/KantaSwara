@@ -1440,3 +1440,25 @@ model DocumentChunk {
   @@schema("public")
 }
 
+// =============================================================================
+// API Keys
+// =============================================================================
+
+model ApiKey {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  name           String
+  keyHash        String    @unique @map("key_hash")
+  prefix         String    // First 8-12 chars for display
+  scopes         String[]  @default(["read", "write"])
+  lastUsedAt     DateTime? @map("last_used_at")
+  expiresAt      DateTime? @map("expires_at")
+  revokedAt      DateTime? @map("revoked_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@index([organizationId])
+  @@index([keyHash])
+  @@map("api_keys")
+  @@schema("public")
+}
+

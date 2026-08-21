@@ -13,8 +13,12 @@ import type {
 } from '../providers/types';
 
 import { OpenAIWhisperSTTProvider } from '../providers/stt/openai-whisper.provider';
+import { DeepgramSTTProvider } from '../providers/stt/deepgram.provider';
 import { OpenAILLMProvider } from '../providers/llm/openai.provider';
+import { GroqLLMProvider } from '../providers/llm/groq.provider';
 import { OpenAITTSProvider } from '../providers/tts/openai-tts.provider';
+import { ElevenLabsTTSProvider } from '../providers/tts/elevenlabs.provider';
+import { setFailoverChain } from '../providers/failover/failover-manager.service';
 
 // ── Provider Factories ──────────────────────────────────────────────────────
 
@@ -132,5 +136,30 @@ export function clearProviderCache(): void {
 // Future providers register themselves or are registered at startup.
 
 registerSTTProvider('openai-whisper', (apiKey) => new OpenAIWhisperSTTProvider(apiKey));
+registerSTTProvider('deepgram', (apiKey) => new DeepgramSTTProvider(apiKey));
+
 registerLLMProvider('openai', (apiKey) => new OpenAILLMProvider(apiKey));
+registerLLMProvider('groq', (apiKey) => new GroqLLMProvider(apiKey));
+
 registerTTSProvider('openai-tts', (apiKey) => new OpenAITTSProvider(apiKey));
+registerTTSProvider('elevenlabs', (apiKey) => new ElevenLabsTTSProvider(apiKey));
+
+// ── Default Failover Chains ─────────────────────────────────────────────────
+// Priority order: primary provider first, fallbacks after.
+// Cost values are approximate $/1K tokens (or $/1K chars for TTS).
+
+setFailoverChain('stt', [
+  { providerId: 'openai-whisper', priority: 1, costPer1kTokens: 0.006 },
+  { providerId: 'deepgram', priority: 2, costPer1kTokens: 0.0043 },
+]);
+
+setFailoverChain('llm', [
+  { providerId: 'openai', priority: 1, costPer1kTokens: 0.15 },
+  { providerId: 'groq', priority: 2, costPer1kTokens: 0.05 },
+]);
+
+setFailoverChain('tts', [
+  { providerId: 'openai-tts', priority: 1, costPer1kTokens: 0.015 },
+  { providerId: 'elevenlabs', priority: 2, costPer1kTokens: 0.03 },
+]);
+

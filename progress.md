@@ -1,8 +1,8 @@
 # KantaSwara — Backend Development Progress
 
-> **Branch:** `backend/slaven`  
-> **Last Updated:** 2026-08-13  
-> **Author:** Slaven
+> **Branch:** `backend/vishnu`  
+> **Last Updated:** 2026-08-21  
+> **Author:** Vishnu
 
 ---
 
@@ -52,14 +52,44 @@ A visitor lands on the website → clicks "Try Live Demo" → instantly talks to
 - Updated `useDemo` hook and API route for domain selection.
 - Two-phase demo page: domain selection cards → voice session with domain-specific UI.
 
-### 🔧 In Progress
+#### Phase 2 (Enterprise) — Provider Failover & Multi-Provider
+- Health monitor (`provider-health.service.ts`) tracking latency, success rates, and availability.
+- Circuit breaker pattern implemented for failed providers.
+- Failover manager for intelligent routing (cost, latency, priority strategies).
+- Integrations: Groq (LLM), Deepgram (STT), ElevenLabs (TTS).
+
+#### Phase 3 (Enterprise) — Analytics Engine
+- Analytics collector accumulating token/duration metrics in-memory before persisting.
+- Cost calculator using provider-specific pricing models.
+- Query service for dashboard aggregation (sessions, agent performance).
+- API routes: `/analytics/sessions`, `/analytics/agents`, `/analytics/overview`.
+
+#### Phase 4 (Enterprise) — Background Jobs
+- Redis client and BullMQ queues implementation (`queue.ts`).
+- **Embedding Worker:** Async processing for RAG documents.
+- **Analytics Worker:** Daily/weekly aggregation and cost alerts.
+- **Notification Worker:** Email, in-app notifications, and usage warnings.
+
+#### Phase 5 (Enterprise) — Security Hardening
+- Secret manager (`secret-manager.service.ts`) using AES-256-GCM encryption and key rotation.
+- API Key service (`api-key.service.ts`) with SHA-256 hashed storage.
+- Extended audit logger for security events, failovers, and tool execution.
+- System health endpoint `/api/v1/health` checking DB, Redis, and providers.
+
+#### Phase 6 (Enterprise) — API Routes
+- REST APIs completed for Provider Health & Circuit breakers.
+- API Key CRUD routes.
+- Knowledge Base and Document upload endpoints.
+- Workflow listing and creation APIs.
+
+### 🔧 In Progress / Next Up
 
 | Item | Status | Notes |
 |---|---|---|
 | Multi-Domain Demo Polish | In Progress | Core implementation done. Needs end-to-end testing with live API keys. |
-| Phase 4: Knowledge Engine | In Progress | Built PgVectorStore; wired semantic search & token budget into VoiceRuntime. |
+| Phase 4: Knowledge Engine (RAG) | In Progress | Built PgVectorStore; wired semantic search & token budget into VoiceRuntime. Queue worker for processing is done. |
 | Phase 5: Agent Binding | In Progress | Created Agent deployment API endpoints and validation services. |
-| Phase 7: Workflow Engine | In Progress | Built intent router, parser, and state machine foundation. |
+| Phase 7: Workflow Engine | In Progress | Built intent router, parser, and state machine foundation. API route for creation is done. |
 | Milestone 2.5 — Polish & Hardening | In Progress | Rate limiting and concurrency controls are implemented. Requires latency profiling on production servers. |
 | Streaming LLM Response | Pending Integration | SSE infrastructure is ready, but word-by-word streaming needs to be fully wired up to the frontend UI for live transcripts. |
 
@@ -67,46 +97,22 @@ A visitor lands on the website → clicks "Try Live Demo" → instantly talks to
 
 ## 🚀 Remaining Phases & Detailed Workflow
 
-### Phase 3: Reusable Voice Runtime (Multi-tenant Orchestration)
+### Phase 3: Reusable Voice Runtime (Multi-tenant Orchestration) [IN PROGRESS]
 Extract the single-tenant demo pipeline into a robust, multi-tenant execution engine.
 - **`VoiceSession` Management:** Migrate from `DemoSession` to a generalized `Conversation` and `VoiceSession` model linking to specific organizations and agents.
 - **Context & Token Budgeting:** Implement sliding window memory management that strictly adheres to token limits to control costs.
 - **Connection Manager:** Handle WebSockets or WebRTC for robust, low-latency audio streaming (replacing the HTTP polling/base64 approach used in the demo).
 - **Workflow:** An API gateway routes incoming telephony/web connections -> Connection Manager -> Voice Runtime -> Providers.
 
-### Phase 4: Knowledge Engine (RAG Integration) [IN PROGRESS]
-Enable agents to understand and query organizational data.
-- **Document Pipeline:** Endpoints for uploading PDF/TXT/HTML files.
-- **Vector DB Integration:** Chunking text and generating embeddings (using OpenAI text-embedding-3 or similar), storing them in Supabase pgvector or an external vector DB.
-- **Retrieval Workflow:** During `PromptService` assembly, run a semantic search against the organization's Knowledge Base and inject context into the LLM system prompt dynamically.
-
-### Phase 5: Agent ↔ Organization Binding [IN PROGRESS]
-Connect the underlying runtime with the platform's RBAC and tenant architecture.
-- **Configuration API:** Build out the CRUD endpoints for `AgentConfiguration`, `PromptConfiguration`, and `VoiceConfiguration` models.
-- **Deployment Manager:** Logic to transition an agent from "Draft" -> "Testing" -> "Deployed", making it actively available for calls.
-- **Security Check:** Ensure all API keys and billing constraints are checked before allowing an organization's agent to start a session.
-
-### Phase 6: Provider Abstraction Registry & Failover
-Make the system resilient against AI provider outages.
-- **Dynamic Registry:** Load provider credentials dynamically from `OrgSettings` or platform defaults.
-- **Failover Logic:** If OpenAI Whisper fails or times out (>2s), automatically fallback to Deepgram or Azure STT.
-- **Cost Routing:** Allow routing inference requests based on cost constraints (e.g., use Claude 3 Haiku for basic queries, GPT-4o for complex reasoning).
-
-### Phase 7: Workflow Execution Engine [IN PROGRESS]
-Bring the visual builder to life.
-- **Graph Execution:** Parse JSON-based workflow graphs (from `WorkflowConfiguration`).
-- **State Machine:** Implement a state machine that transitions between states based on LLM intent classification (e.g., "User wants to book -> Transition to Booking Node").
-- **External Webhooks:** Allow the agent to trigger API calls (e.g., POST to a CRM) mid-conversation and wait for the response before speaking.
-
-### Phase 8: Analytics & Telemetry Pipeline
+### Phase 8: Analytics & Telemetry Pipeline [MOSTLY DONE]
 Expose insights to organizations.
 - **Event Bus:** Emit structured events (`session_started`, `message_processed`, `tool_called`) to an internal queue.
 - **Aggregation Cron:** Background jobs to roll up metrics into `Analytics` and `UsageReport` models (daily cost, average call duration, sentiment score).
 - **Dashboard API:** REST endpoints serving aggregated time-series data for the frontend dashboard.
 
-### Phase 9: Production Hardening
+### Phase 9: Production Hardening [IN PROGRESS]
 Prepare the platform for enterprise SLAs.
-- **Queues:** Implement Redis-based job queues (BullMQ) for async tasks like document embedding and summary generation.
+- **Queues:** Implement Redis-based job queues (BullMQ) for async tasks like document embedding and summary generation (Done).
 - **Monitoring & Alerts:** Set up DataDog/Sentry for backend error tracking and latency monitoring.
 - **Billing Integration:** Hook up `VoiceUsage` to Stripe for automated invoicing based on minutes consumed.
 
@@ -114,9 +120,9 @@ Prepare the platform for enterprise SLAs.
 
 ## 🛠 Next Steps (Immediate Action Plan)
 
-1. **End-to-End Demo Test:** Configure `OPENAI_API_KEY`, run locally, and test all three domain personas.
-2. **Verify Domain Boundaries:** Confirm each persona rejects off-topic questions gracefully.
-3. **Voice Mode Testing:** Validate STT → LLM → TTS pipeline works with each persona's TTS voice.
+1. **End-to-End Demo Test:** Configure API keys (`GROQ_API_KEY`, `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY`), run locally, and test the real-time failovers.
+2. **Verify Background Jobs:** Start a Redis instance, fire document upload endpoints, and verify workers parse documents.
+3. **Voice Mode Testing:** Validate STT → LLM → TTS pipeline works with each persona's TTS voice using the new provider abstraction.
 4. **Mobile Responsiveness:** Verify domain selection cards and voice session render well on mobile.
 5. **Deploy to Staging:** Push to staging environment for final review before submission.
 

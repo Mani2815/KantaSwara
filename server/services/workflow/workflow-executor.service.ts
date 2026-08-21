@@ -16,6 +16,7 @@ import type {
 } from './workflow.types';
 import { DEFAULT_RETRY_CONFIG, DEFAULT_TIMEOUT_CONFIG } from './workflow.types';
 import * as workflowState from './workflow-state.service';
+import { executeTool } from '../tools/tool-executor.service';
 
 // =============================================================================
 // EXECUTE NODE
@@ -108,7 +109,7 @@ async function executeNodeByType(
     case 'api_call':
       return executeApiCallNode(node, sessionId);
     case 'function_call':
-      return executeFunctionCallNode(node, sessionId);
+      return executeFunctionCallNode(node, sessionId, context);
     case 'condition':
       return executeConditionNode(node, sessionId);
     case 'delay':
@@ -391,9 +392,9 @@ async function executeApiCallNode(
 
 async function executeFunctionCallNode(
   node: ExecutableNode,
-  sessionId: string
+  sessionId: string,
+  context: RuntimeContext
 ): Promise<NodeExecutionResult> {
-  // Function calls will be wired to the Tool Framework (Phase 4)
   const functionName = node.data.functionName;
 
   if (!functionName) {
@@ -408,10 +409,47 @@ async function executeFunctionCallNode(
     };
   }
 
-  // Placeholder — will integrate with ToolExecutor
+  // Resolve parameters from workflow variables
+  const rawParams = (node.data.parameters as Record<string, unknown>) || {};
+  const resolvedParams: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(rawParams)) {
+    if (typeof value === 'string' && value.startsWith('{{') && value.endsWith('}}')) {
+      const varName = value.slice(2, -2).trim();
+      resolvedParams[key] = workflowState.getVariable(sessionId, varName) ?? value;
+    } else {
+      resolvedParams[key] = value;
+    }
+  }
+
+  // Execute via the Tool Framework
+  const result = await executeTool({
+    toolId: functionName,
+    parameters: resolvedParams,
+    sessionId,
+    organizationId: context.organization.id,
+  });
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: {
+        code: result.error?.code || 'TOOL_ERROR',
+        message: result.error?.message || 'Tool execution failed.',
+        nodeId: node.id,
+        recoverable: result.error?.retryable ?? true,
+      },
+      metadata: { functionName, durationMs: result.durationMs },
+    };
+  }
+
+  // Store result in workflow variable
+  const resultVarName = `__tool_result_${functionName}`;
+  workflowState.setVariable(sessionId, resultVarName, result.output);
+
   return {
     success: true,
-    metadata: { functionName, note: 'Function execution via Tool Framework' },
+    variablesSet: { [resultVarName]: result.output },
+    metadata: { functionName, durationMs: result.durationMs },
   };
 }
 
