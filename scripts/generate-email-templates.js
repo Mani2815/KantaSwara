@@ -28,7 +28,7 @@ const templates = [
   { path: 'notifications/MaintenanceNoticeEmail.tsx', name: 'MaintenanceNoticeEmail', vars: 'title: string, startTime: string, endTime: string, affectedServices: string', subject: 'Maintenance Notice' },
 ];
 
-const basePath = path.join(__dirname, 'src/components/emails');
+const basePath = path.join(__dirname, '../src/components/emails');
 
 templates.forEach(t => {
   const fullPath = path.join(basePath, t.path);
