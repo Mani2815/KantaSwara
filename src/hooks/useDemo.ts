@@ -25,7 +25,8 @@ export type DemoStatus =
   | 'error'
   | 'ended';
 
-export type DemoDomain = 'healthcare' | 'education' | 'banking';
+import type { DemoDomain } from '@server/services/demo/domain-personas.config';
+export type { DemoDomain };
 
 export interface TranscriptEntry {
   id: string;
