@@ -17,7 +17,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .eq('id', user.id)
       .single();
 
-    if (profile?.role !== 'super_admin' && profile?.role !== 'support_admin') {
+    if (profile?.role !== 'super_admin' && profile?.role !== ('support_admin' as any)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

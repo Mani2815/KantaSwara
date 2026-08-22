@@ -32,7 +32,7 @@ export class AgentBuilderService {
       throw new Error(`Agent not found: ${agentError?.message || ''}`);
     }
 
-    const currentVersionId = agent.current_version_id;
+    const currentVersionId = agent.current_version_id || '';
 
     // 2. Fetch recent deployments
     const { data: deployments } = await this.supabase

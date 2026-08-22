@@ -76,7 +76,7 @@ export async function approveOrganization(organizationId: string) {
 
     console.log('\n[DEBUG-ACTIONS] Recipient Resolution:');
     console.log({
-      orgContactEmail: orgData?.contact_email,
+      orgContactEmail: (orgData as any)?.contact_email,
       profilesFetched: profiles?.length,
       adminResolved: !!admin,
       adminEmail: admin?.email,
