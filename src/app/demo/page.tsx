@@ -14,9 +14,9 @@ import {
   Clock,
   ArrowRight,
   ArrowLeft,
-  Heart,
+  Home,
   GraduationCap,
-  Landmark,
+  Car,
   Sparkles,
   AlertTriangle,
   X,
@@ -43,27 +43,27 @@ interface DomainCardData {
 
 const DOMAINS: DomainCardData[] = [
   {
-    domain: 'healthcare',
-    title: 'Healthcare',
-    agent: 'Ananya',
-    role: 'Hospital Receptionist',
+    domain: 'real_estate',
+    title: 'Real Estate',
+    agent: 'Arjun',
+    role: 'Property Sales Assistant',
     description:
-      'AI-powered hospital receptionist handling appointments, doctor availability, and patient inquiries.',
-    topics: ['Book appointment', 'Doctor availability', 'Hospital timings', 'Departments', 'Emergency info'],
-    gradient: 'from-teal-500/10 to-emerald-500/10',
-    iconBg: 'bg-teal-500/15',
-    accent: 'text-teal-500',
-    accentLight: 'text-teal-400',
-    borderAccent: 'border-teal-500/30',
+      'AI property sales assistant qualifying buyers, recommending properties, and booking site visits.',
+    topics: ['Property availability', 'Budget & pricing', 'Location guide', 'Site visit booking', 'Home loan info'],
+    gradient: 'from-orange-500/10 to-amber-500/10',
+    iconBg: 'bg-orange-500/15',
+    accent: 'text-orange-500',
+    accentLight: 'text-orange-400',
+    borderAccent: 'border-orange-500/30',
   },
   {
-    domain: 'education',
-    title: 'Education',
+    domain: 'edtech',
+    title: 'EdTech',
     agent: 'Kavitha',
-    role: 'Admissions Assistant',
+    role: 'Admission Counselor',
     description:
-      'AI admissions counselor guiding students through courses, fees, scholarships, and campus life.',
-    topics: ['Courses & programs', 'Admission process', 'Fees & scholarships', 'Eligibility', 'Hostel & campus'],
+      'AI admission counselor verifying eligibility, explaining courses, and scheduling free demo sessions.',
+    topics: ['Available courses', 'Eligibility check', 'Fees & EMI plans', 'Free demo class', 'Placement support'],
     gradient: 'from-blue-500/10 to-indigo-500/10',
     iconBg: 'bg-blue-500/15',
     accent: 'text-blue-500',
@@ -71,29 +71,29 @@ const DOMAINS: DomainCardData[] = [
     borderAccent: 'border-blue-500/30',
   },
   {
-    domain: 'banking',
-    title: 'Banking',
-    agent: 'Priya',
-    role: 'Customer Support Executive',
+    domain: 'automobile',
+    title: 'Automobile',
+    agent: 'Rohan',
+    role: 'Vehicle Sales Consultant',
     description:
-      'AI banking support agent handling loans, credit cards, account services, and general queries.',
-    topics: ['Loan information', 'Credit cards', 'Account services', 'Branch locator', 'Banking FAQs'],
-    gradient: 'from-amber-500/10 to-orange-500/10',
-    iconBg: 'bg-amber-500/15',
-    accent: 'text-amber-500',
-    accentLight: 'text-amber-400',
-    borderAccent: 'border-amber-500/30',
+      'AI vehicle consultant analyzing buyer needs, comparing models, and confirming test drives.',
+    topics: ['Model comparison', 'Pricing & EMI', 'Fuel type options', 'Book test drive', 'Exchange offers'],
+    gradient: 'from-violet-500/10 to-purple-500/10',
+    iconBg: 'bg-violet-500/15',
+    accent: 'text-violet-500',
+    accentLight: 'text-violet-400',
+    borderAccent: 'border-violet-500/30',
   },
 ];
 
 function getDomainIcon(domain: DemoDomain, className: string = 'w-6 h-6') {
   switch (domain) {
-    case 'healthcare':
-      return <Heart className={className} />;
-    case 'education':
+    case 'real_estate':
+      return <Home className={className} />;
+    case 'edtech':
       return <GraduationCap className={className} />;
-    case 'banking':
-      return <Landmark className={className} />;
+    case 'automobile':
+      return <Car className={className} />;
   }
 }
 

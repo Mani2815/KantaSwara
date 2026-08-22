@@ -159,7 +159,7 @@ function generateSessionToken(): string {
 export async function startDemoSession(
   ipAddress: string,
   userAgent: string | null,
-  domain: DemoDomain = 'healthcare'
+  domain: DemoDomain = 'real_estate'
 ): Promise<StartDemoResponse> {
   const config = DEMO_AGENT_CONFIG;
   const persona = getDomainPersona(domain);
