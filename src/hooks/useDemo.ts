@@ -25,7 +25,7 @@ export type DemoStatus =
   | 'error'
   | 'ended';
 
-export type DemoDomain = 'healthcare' | 'education' | 'banking';
+export type DemoDomain = 'real_estate' | 'edtech' | 'automobile';
 
 export interface TranscriptEntry {
   id: string;
