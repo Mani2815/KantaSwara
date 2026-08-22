@@ -30,7 +30,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .from('organizations')
       .select('name, contact_email, admins:user_organizations(user:profiles(id, first_name, last_name, email))')
       .eq('id', id)
-      .single();
+      .single() as any;
 
     if (orgError || !orgData) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 });

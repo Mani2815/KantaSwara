@@ -10,7 +10,7 @@ const bulkEmailSchema = z.object({
       toName: z.string().optional(),
       subject: z.string(),
       templateKey: z.string(),
-      variables: z.record(z.unknown()).optional(),
+      variables: z.record(z.string(), z.unknown()).optional(),
       organizationId: z.string().uuid().optional(),
     })
   ).min(1).max(100), // Max 100 per request
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Validation Error', details: error.errors }, { status: 400 });
+      return NextResponse.json({ error: 'Validation Error', details: error.issues }, { status: 400 });
     }
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }

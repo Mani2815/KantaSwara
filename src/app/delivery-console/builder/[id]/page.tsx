@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Settings, FileText, Bot, MessageSquare, Workflow, Database, 
   Mic, Plug, Variable, PlayCircle, ClipboardCheck, Rocket, 
@@ -42,6 +42,18 @@ export default function AgentBuilderPage({ params }: { params: Promise<{ id: str
   
   const isNew = unwrappedParams.id === 'new';
 
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await apiClient.get<{ data: any }>(`/builder/agents/${unwrappedParams.id}`);
+      setData(res.data);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to load agent configuration');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [unwrappedParams.id]);
+
   useEffect(() => {
     if (isNew) {
       setData({
@@ -60,19 +72,7 @@ export default function AgentBuilderPage({ params }: { params: Promise<{ id: str
     } else {
       loadData();
     }
-  }, [unwrappedParams.id, isNew]);
-
-  const loadData = async () => {
-    setIsLoading(true);
-    try {
-      const res = await apiClient.get<{ data: any }>(`/builder/agents/${unwrappedParams.id}`);
-      setData(res.data);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to load agent configuration');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [unwrappedParams.id, isNew, loadData]);
 
   const handleSaveDraft = async () => {
     if (!data) return;

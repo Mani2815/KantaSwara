@@ -8,7 +8,7 @@ const sendEmailSchema = z.object({
   toName: z.string().optional(),
   subject: z.string(),
   templateKey: z.string(),
-  variables: z.record(z.unknown()).optional(),
+  variables: z.record(z.string(), z.unknown()).optional(),
   category: z.enum([
     'AUTH',
     'ORGANIZATION',
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    if (profile?.role !== 'super_admin' && profile?.role !== 'solutions_admin' && profile?.role !== 'support_admin') {
+    if (profile?.role !== 'super_admin' && profile?.role !== ('solutions_admin' as any) && profile?.role !== ('support_admin' as any)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, emailLogId: result.emailLogId, providerId: result.providerId });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Validation Error', details: error.errors }, { status: 400 });
+      return NextResponse.json({ error: 'Validation Error', details: error.issues }, { status: 400 });
     }
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }

@@ -170,7 +170,7 @@ export function getVectorStore(): VectorStore {
     const { PgVectorStore } = require('./pgvector-store.service');
     defaultStore = new PgVectorStore();
   }
-  return defaultStore;
+  return defaultStore!;
 }
 
 /**

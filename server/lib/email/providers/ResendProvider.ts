@@ -42,7 +42,7 @@ export class ResendProvider implements IEmailProvider {
       const { data, error } = await this.client.emails.send({
         from: fromAddress,
         to: toAddresses,
-        reply_to: payload.replyTo ?? config.replyTo,
+        replyTo: payload.replyTo ?? config.replyTo,
         subject: payload.subject,
         html: payload.html,
         text: payload.text,

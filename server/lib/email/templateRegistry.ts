@@ -14,7 +14,7 @@ export interface TemplateRegistryEntry {
   category: EmailCategory;
   subject: string; // Supports {{variables}}
   isMandatory: boolean; // Cannot be disabled by user preferences
-  component: () => Promise<{ default: ComponentType<Record<string, unknown>> }>;
+  component: () => Promise<{ default: ComponentType<any> }>;
 }
 
 // Template registry — lazy imports to avoid loading all React components at startup
@@ -29,7 +29,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     isMandatory: true,
     component: () =>
       import('@/components/emails/auth/WelcomeEmail') as Promise<{
-        default: ComponentType<Record<string, unknown>>;
+        default: ComponentType<any>;
       }>,
   },
   'auth-verify-email': {
@@ -41,7 +41,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     isMandatory: true,
     component: () =>
       import('@/components/emails/auth/VerifyEmailEmail') as Promise<{
-        default: ComponentType<Record<string, unknown>>;
+        default: ComponentType<any>;
       }>,
   },
   'auth-password-reset': {
@@ -53,7 +53,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     isMandatory: true,
     component: () =>
       import('@/components/emails/auth/PasswordResetEmail') as Promise<{
-        default: ComponentType<Record<string, unknown>>;
+        default: ComponentType<any>;
       }>,
   },
   'auth-password-changed': {
@@ -65,7 +65,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     isMandatory: true,
     component: () =>
       import('@/components/emails/auth/PasswordChangedEmail') as Promise<{
-        default: ComponentType<Record<string, unknown>>;
+        default: ComponentType<any>;
       }>,
   },
   'auth-login-alert': {
@@ -77,7 +77,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     isMandatory: true,
     component: () =>
       import('@/components/emails/auth/LoginAlertEmail') as Promise<{
-        default: ComponentType<Record<string, unknown>>;
+        default: ComponentType<any>;
       }>,
   },
   'auth-account-locked': {
@@ -89,7 +89,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     isMandatory: true,
     component: () =>
       import('@/components/emails/auth/AccountLockedEmail') as Promise<{
-        default: ComponentType<Record<string, unknown>>;
+        default: ComponentType<any>;
       }>,
   },
 
@@ -104,7 +104,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/organization/OrgRegistrationSubmittedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'org-approved': {
     key: 'org-approved',
@@ -116,7 +116,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/organization/OrgApprovedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'org-rejected': {
     key: 'org-rejected',
@@ -128,7 +128,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/organization/OrgRejectedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'org-suspended': {
     key: 'org-suspended',
@@ -140,7 +140,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/organization/OrgSuspendedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
 
   // ── Employee ──────────────────────────────────────────────────────────────
@@ -154,7 +154,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/employee/EmployeeInvitationEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'employee-activated': {
     key: 'employee-activated',
@@ -166,7 +166,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/employee/EmployeeActivatedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'employee-password-reset': {
     key: 'employee-password-reset',
@@ -178,7 +178,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/employee/EmployeePasswordResetEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'employee-role-changed': {
     key: 'employee-role-changed',
@@ -190,7 +190,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/employee/EmployeeRoleChangedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
 
   // ── Billing ───────────────────────────────────────────────────────────────
@@ -204,7 +204,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/billing/SubscriptionCreatedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'billing-invoice-generated': {
     key: 'billing-invoice-generated',
@@ -216,7 +216,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/billing/InvoiceGeneratedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'billing-payment-successful': {
     key: 'billing-payment-successful',
@@ -228,7 +228,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/billing/PaymentSuccessfulEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'billing-payment-failed': {
     key: 'billing-payment-failed',
@@ -240,7 +240,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/billing/PaymentFailedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'billing-subscription-expiring': {
     key: 'billing-subscription-expiring',
@@ -252,7 +252,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/billing/SubscriptionExpiringEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'billing-trial-ending': {
     key: 'billing-trial-ending',
@@ -264,7 +264,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/billing/TrialEndingEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
 
   // ── Delivery ──────────────────────────────────────────────────────────────
@@ -278,7 +278,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/delivery/ProjectAssignedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'delivery-deployment-successful': {
     key: 'delivery-deployment-successful',
@@ -290,7 +290,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/delivery/DeploymentSuccessfulEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'delivery-deployment-failed': {
     key: 'delivery-deployment-failed',
@@ -302,7 +302,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/delivery/DeploymentFailedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'delivery-qa-approved': {
     key: 'delivery-qa-approved',
@@ -314,7 +314,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/delivery/QAApprovedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
 
   // ── AI Builder ────────────────────────────────────────────────────────────
@@ -328,7 +328,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/builder/DraftSavedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'builder-validation-passed': {
     key: 'builder-validation-passed',
@@ -340,7 +340,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/builder/ValidationPassedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'builder-validation-failed': {
     key: 'builder-validation-failed',
@@ -352,7 +352,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/builder/ValidationFailedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'builder-agent-published': {
     key: 'builder-agent-published',
@@ -364,7 +364,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/builder/AgentPublishedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'builder-deployment-started': {
     key: 'builder-deployment-started',
@@ -376,7 +376,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/builder/DeploymentStartedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'builder-rollback-completed': {
     key: 'builder-rollback-completed',
@@ -388,7 +388,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/builder/RollbackCompletedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
 
   // ── Security ──────────────────────────────────────────────────────────────
@@ -402,7 +402,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/security/SuspiciousLoginEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'security-api-key-created': {
     key: 'security-api-key-created',
@@ -414,7 +414,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/security/APIKeyCreatedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'security-api-key-revoked': {
     key: 'security-api-key-revoked',
@@ -426,7 +426,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/security/APIKeyRevokedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'security-mfa-enabled': {
     key: 'security-mfa-enabled',
@@ -438,7 +438,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/security/MFAEnabledEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'security-mfa-disabled': {
     key: 'security-mfa-disabled',
@@ -450,7 +450,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/security/MFADisabledEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
 
   // ── Notifications ─────────────────────────────────────────────────────────
@@ -464,7 +464,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/notifications/AnnouncementEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'notification-maintenance': {
     key: 'notification-maintenance',
@@ -476,7 +476,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/notifications/MaintenanceNoticeEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
 
   // ── Support ───────────────────────────────────────────────────────────────
@@ -490,7 +490,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/support/TicketCreatedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'support-ticket-assigned': {
     key: 'support-ticket-assigned',
@@ -502,7 +502,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/support/TicketAssignedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'support-ticket-updated': {
     key: 'support-ticket-updated',
@@ -514,7 +514,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/support/TicketUpdatedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'support-ticket-closed': {
     key: 'support-ticket-closed',
@@ -526,7 +526,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/support/TicketClosedEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'support-customer-reply': {
     key: 'support-customer-reply',
@@ -538,7 +538,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/support/CustomerReplyEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
   'support-internal-reply': {
     key: 'support-internal-reply',
@@ -550,7 +550,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/support/InternalReplyEmail'
-      ) as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as Promise<{ default: ComponentType<any> }>,
   },
 
   // ── Demo ──────────────────────────────────────────────────────────────────
@@ -564,7 +564,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/demo/DemoCompletedSummaryEmail'
-      ) as unknown as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as unknown as Promise<{ default: ComponentType<any> }>,
   },
   'demo-contact-sales': {
     key: 'demo-contact-sales',
@@ -576,7 +576,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/demo/ContactSalesFollowupEmail'
-      ) as unknown as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as unknown as Promise<{ default: ComponentType<any> }>,
   },
   'demo-meeting-confirmation': {
     key: 'demo-meeting-confirmation',
@@ -588,7 +588,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/demo/DemoMeetingConfirmationEmail'
-      ) as unknown as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as unknown as Promise<{ default: ComponentType<any> }>,
   },
   'demo-trial-invitation': {
     key: 'demo-trial-invitation',
@@ -600,7 +600,7 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
     component: () =>
       import(
         '@/components/emails/demo/TrialInvitationEmail'
-      ) as unknown as Promise<{ default: ComponentType<Record<string, unknown>> }>,
+      ) as unknown as Promise<{ default: ComponentType<any> }>,
   },
 };
 
