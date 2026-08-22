@@ -14,10 +14,10 @@ import * as React from 'react';
 
 interface BaseEmailLayoutProps {
   previewText: string;
-  appName: string;
-  appUrl: string;
-  supportEmail: string;
-  currentYear: number | string;
+  appName?: string;
+  appUrl?: string;
+  supportEmail?: string;
+  currentYear?: number | string;
   children: React.ReactNode;
 }
 
