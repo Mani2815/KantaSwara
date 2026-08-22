@@ -11,6 +11,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "predev": "node scripts/validate-env.mjs && node scripts/validate-db.mjs",
     "prebuild": "node scripts/validate-env.mjs",
     "db:migrate": "node scripts/run-migrations.mjs",

@@ -23,7 +23,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useDemo, type DemoDomain } from '@/hooks/useDemo';
+import { useDemo } from '@/hooks/useDemo';
+import type { DemoDomain } from '@server/services/demo/domain-personas.config';
 
 // ── Domain Card Data ────────────────────────────────────────────────────────
 
