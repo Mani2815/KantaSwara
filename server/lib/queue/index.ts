@@ -3,11 +3,17 @@
 // =============================================================================
 
 // ── Redis ───────────────────────────────────────────────────────────────────
-export {
+import {
   getRedisClient,
   disconnectRedis,
   isRedisHealthy,
 } from '../redis/redis';
+
+export {
+  getRedisClient,
+  disconnectRedis,
+  isRedisHealthy,
+};
 
 // ── Queue Factory ───────────────────────────────────────────────────────────
 export {
@@ -30,8 +36,14 @@ import { startNotificationWorker } from './workers/notification-worker';
  * Initialize all background workers.
  * Call once at server startup (only in non-edge environments).
  */
-export function initializeWorkers(): void {
+export async function initializeWorkers(): Promise<void> {
   try {
+    const redisOk = await isRedisHealthy();
+    if (!redisOk) {
+      console.warn('[Queue] Redis is unavailable. Skipping background worker initialization.');
+      return;
+    }
+
     startEmbeddingWorker();
     startAnalyticsWorker();
     startNotificationWorker();

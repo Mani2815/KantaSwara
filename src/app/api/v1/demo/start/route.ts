@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const userAgent = request.headers.get('user-agent');
 
     // Parse domain from request body
-    let domain: DemoDomain = 'healthcare';
+    let domain: DemoDomain = 'real_estate';
     try {
       const body = await request.json();
       if (body.domain && AVAILABLE_DOMAINS.includes(body.domain)) {

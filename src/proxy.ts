@@ -9,7 +9,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  * 2. Redirect unauthenticated users to /login for protected routes
  * 3. Redirect authenticated users away from auth pages to /dashboard
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Update session and get current user

@@ -6,6 +6,7 @@
 // =============================================================================
 
 import type { TTSProvider, TTSResult, TTSOptions } from '../types';
+import { handleHttpError } from '../errors';
 
 // Deepgram Aura voices — all available on free tier
 // aura-asteria-en  – warm, natural female (recommended)
@@ -50,8 +51,8 @@ export class DeepgramTTSProvider implements TTSProvider {
     );
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Deepgram TTS API error (${response.status}): ${error}`);
+      const errorText = await response.text();
+      handleHttpError('deepgram-tts', response.status, errorText);
     }
 
     const arrayBuffer = await response.arrayBuffer();

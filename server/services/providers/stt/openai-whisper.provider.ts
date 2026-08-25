@@ -5,7 +5,9 @@
 // Uses whisper-1 model for speech-to-text conversion.
 // =============================================================================
 
-import type { STTProvider, STTResult, STTOptions } from '../types';
+import type { STTProvider, STTResult,  STTOptions,
+} from '../types';
+import { handleHttpError } from '../errors';
 
 const DEFAULT_MODEL = 'whisper-1';
 
@@ -62,8 +64,8 @@ export class OpenAIWhisperSTTProvider implements STTProvider {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`OpenAI Whisper API error (${response.status}): ${error}`);
+      const errorText = await response.text();
+      handleHttpError('openai-whisper', response.status, errorText);
     }
 
     const data = await response.json();

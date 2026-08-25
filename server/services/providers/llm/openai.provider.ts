@@ -13,6 +13,7 @@ import type {
   LLMStreamChunk,
   LLMOptions,
 } from '../types';
+import { handleHttpError } from '../errors';
 
 const DEFAULT_MODEL = 'gpt-4o-mini';
 const DEFAULT_TEMPERATURE = 0.7;
@@ -56,8 +57,8 @@ export class OpenAILLMProvider implements LLMProvider {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`OpenAI API error (${response.status}): ${error}`);
+      const errorText = await response.text();
+      handleHttpError('openai', response.status, errorText);
     }
 
     const data = await response.json();
@@ -99,8 +100,8 @@ export class OpenAILLMProvider implements LLMProvider {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`OpenAI API error (${response.status}): ${error}`);
+      const errorText = await response.text();
+      handleHttpError('openai', response.status, errorText);
     }
 
     const reader = response.body?.getReader();

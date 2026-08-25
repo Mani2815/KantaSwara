@@ -25,7 +25,12 @@ export type DemoStatus =
   | 'error'
   | 'ended';
 
+<<<<<<< HEAD
 export type DemoDomain = 'real_estate' | 'edtech' | 'automobile';
+=======
+import type { DemoDomain } from '@server/services/demo/domain-personas.config';
+export type { DemoDomain };
+>>>>>>> 9e7a1442da42d3a93d663dad31f3fe842e599f91
 
 export interface TranscriptEntry {
   id: string;

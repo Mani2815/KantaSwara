@@ -25,48 +25,50 @@ interface HealthCheckResult {
 const startTime = Date.now();
 
 export async function GET(request: NextRequest) {
-  const result: HealthCheckResult = {
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: Math.round((Date.now() - startTime) / 1000),
-    checks: {
-      database: { status: 'unknown', latencyMs: 0 },
-      redis: { status: 'unknown' },
-      providers: { stt: [], llm: [], tts: [] },
-    },
-    version: process.env.npm_package_version || '2.0.0',
-  };
+  let dbStatus = 'healthy';
+  let redisStatus = 'healthy';
+  let providersStatus = 'healthy';
+  let overallStatus = 'healthy';
 
   // ── Database Check ──────────────────────────────────────────────────────
   try {
-    const dbStart = Date.now();
     await prisma.$queryRaw`SELECT 1`;
-    result.checks.database = {
-      status: 'connected',
-      latencyMs: Date.now() - dbStart,
-    };
   } catch {
-    result.checks.database = { status: 'disconnected', latencyMs: 0 };
-    result.status = 'unhealthy';
+    dbStatus = 'unavailable';
+    overallStatus = 'unhealthy';
   }
 
-  // ── Redis Check ─────────────────────────────────────────────────────────
+  // ── Redis Check (Optional) ─────────────────────────────────────────────────────────
   try {
     const redisOk = await isRedisHealthy();
-    result.checks.redis = { status: redisOk ? 'connected' : 'disconnected' };
-    if (!redisOk) result.status = 'degraded';
+    if (!redisOk) {
+      redisStatus = 'unavailable';
+      if (overallStatus !== 'unhealthy') overallStatus = 'degraded';
+    }
   } catch {
-    result.checks.redis = { status: 'disconnected' };
-    result.status = 'degraded'; // Redis down = degraded, not unhealthy
+    redisStatus = 'unavailable';
+    if (overallStatus !== 'unhealthy') overallStatus = 'degraded';
   }
 
   // ── Provider Check ──────────────────────────────────────────────────────
+  let providers = { stt: [], llm: [], tts: [] };
   try {
-    result.checks.providers = getRegisteredProviders();
+    providers = getRegisteredProviders() as any;
   } catch {
-    result.checks.providers = { stt: [], llm: [], tts: [] };
+    providersStatus = 'unavailable';
   }
 
-  const statusCode = result.status === 'unhealthy' ? 503 : 200;
+  const result = {
+    status: overallStatus,
+    database: dbStatus,
+    redis: redisStatus,
+    aiProviders: providersStatus,
+    providersList: providers,
+    timestamp: new Date().toISOString(),
+    uptime: Math.round((Date.now() - startTime) / 1000),
+    version: process.env.npm_package_version || '2.0.0',
+  };
+
+  const statusCode = overallStatus === 'unhealthy' ? 503 : 200;
   return NextResponse.json(result, { status: statusCode });
 }
