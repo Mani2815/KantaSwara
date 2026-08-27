@@ -21,7 +21,7 @@ let redisClient: Redis | null = null;
 export function getRedisClient(): Redis {
   if (redisClient) return redisClient;
 
-  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+  const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 
   redisClient = new Redis(redisUrl, {
     maxRetriesPerRequest: null, // Required by BullMQ
@@ -77,9 +77,9 @@ export async function disconnectRedis(): Promise<void> {
  * Check if Redis is connected and responsive.
  */
 export async function isRedisHealthy(): Promise<boolean> {
-  if (!redisClient) return false;
   try {
-    const pong = await redisClient.ping();
+    const client = getRedisClient();
+    const pong = await client.ping();
     return pong === 'PONG';
   } catch {
     return false;

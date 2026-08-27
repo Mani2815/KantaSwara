@@ -13,6 +13,7 @@ import type {
   LLMStreamChunk,
   LLMOptions,
 } from '../types';
+import { handleHttpError } from '../errors';
 
 const DEFAULT_MODEL = 'llama-3.1-8b-instant';
 const DEFAULT_TEMPERATURE = 0.7;
@@ -54,8 +55,8 @@ export class GroqLLMProvider implements LLMProvider {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Groq API error (${response.status}): ${error}`);
+      const errorText = await response.text();
+      handleHttpError('groq', response.status, errorText);
     }
 
     const data = await response.json();
@@ -97,8 +98,8 @@ export class GroqLLMProvider implements LLMProvider {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Groq API error (${response.status}): ${error}`);
+      const errorText = await response.text();
+      handleHttpError('groq', response.status, errorText);
     }
 
     const reader = response.body?.getReader();

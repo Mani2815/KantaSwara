@@ -28,6 +28,7 @@ import {
   getLLMProvider,
   getTTSProvider,
 } from '../runtime/provider-registry.service';
+import { executeWithFailover, AllProvidersFailedError } from '../providers/failover/failover-manager.service';
 import type {
   StartDemoResponse,
   DemoMessageResponse,
@@ -82,23 +83,28 @@ async function withRetry<T>(
 ): Promise<T> {
   try {
     return await fn();
-  } catch (firstErr) {
-    // If it's already a DemoError from validation (not a provider error), rethrow
-    if (
-      firstErr instanceof DemoError &&
-      ['EMPTY_AUDIO', 'SESSION_NOT_FOUND', 'SESSION_ENDED', 'SESSION_EXPIRED', 'MAX_TURNS', 'EMPTY_INPUT', 'MESSAGE_RATE_LIMITED'].includes(firstErr.code)
-    ) {
-      throw firstErr;
+  } catch (err) {
+    if (err instanceof DemoError) throw err;
+
+    let finalMessage = errorMessage;
+    if (err instanceof AllProvidersFailedError && err.errors.length > 0) {
+      const lastError = err.errors[err.errors.length - 1];
+      if (
+        lastError.name === 'ProviderAuthError' ||
+        lastError.name === 'ProviderRateLimitError' ||
+        lastError.name === 'ProviderQuotaExceededError' ||
+        lastError.name === 'ProviderModelUnsupportedError'
+      ) {
+        finalMessage = lastError.message; // Propagate actionable message
+      }
     }
 
-    console.warn(`[DemoService] ${errorCode} — retrying once...`, firstErr instanceof Error ? firstErr.message : firstErr);
-
+    console.warn(`[DemoService] ${errorCode} — retrying once...`, err instanceof Error ? err.message : err);
     try {
       return await fn();
     } catch (retryErr) {
-      // If retry also fails, throw user-friendly error
-      if (retryErr instanceof DemoError) throw retryErr;
-      throw new DemoError(errorCode, errorMessage, statusCode);
+      console.error(`[DemoService] ${errorCode} retry failed:`, retryErr instanceof Error ? retryErr.message : retryErr);
+      throw new DemoError(errorCode, finalMessage, statusCode);
     }
   }
 }
@@ -129,18 +135,7 @@ function checkSessionMessageRate(sessionId: string): void {
 }
 
 
-// ── Provider Resolution (via Registry instead of hardcoded singletons) ───────
-function getDemoSTT() {
-  return getSTTProvider(DEMO_AGENT_CONFIG.providers.stt);
-}
 
-function getDemoLLM() {
-  return getLLMProvider(DEMO_AGENT_CONFIG.providers.llm);
-}
-
-function getDemoTTS() {
-  return getTTSProvider(DEMO_AGENT_CONFIG.providers.tts);
-}
 
 // ── Session Token Generation ────────────────────────────────────────────────
 function generateSessionToken(): string {
@@ -180,8 +175,12 @@ export async function startDemoSession(
   }
 
   // ── Concurrent session check ────────────────────────────────────────────
+  const expirationThreshold = new Date(Date.now() - config.constraints.maxSessionDurationSec * 1000);
   const activeSessions = await prisma.demoSession.count({
-    where: { status: 'active' },
+    where: { 
+      status: 'active',
+      startedAt: { gte: expirationThreshold }
+    },
   });
 
   if (activeSessions >= config.constraints.maxConcurrentSessions) {
@@ -210,12 +209,16 @@ export async function startDemoSession(
   // ── Generate greeting audio (optional, async) ───────────────────────────
   let greetingAudio: string | undefined;
   try {
-    const ttsResult = await getDemoTTS().synthesize(persona.greeting, {
-      voice: persona.ttsVoice,
-      speed: config.tts.speed,
-      format: config.tts.format,
-    });
-    greetingAudio = ttsResult.audio.toString('base64');
+    const ttsResponse = await executeWithFailover(
+      'tts',
+      (providerId) => getTTSProvider(providerId).synthesize(persona.greeting, {
+        voice: persona.ttsVoice,
+        speed: config.tts.speed,
+        format: config.tts.format,
+      }),
+      DEMO_AGENT_CONFIG.providers.tts
+    );
+    greetingAudio = ttsResponse.result.audio.toString('base64');
   } catch (err) {
     // TTS failure is non-fatal — text greeting still works
     console.error('[DemoService] Greeting TTS failed:', err);
@@ -293,8 +296,14 @@ export async function processDemoMessage(
     const sttResult = await withRetry(
       () =>
         withTimeout(
-          (_signal) =>
-            getDemoSTT().transcribe(audioBuffer, input.audioMimeType || 'audio/webm'),
+          async (_signal) => {
+            const resp = await executeWithFailover(
+              'stt',
+              (providerId) => getSTTProvider(providerId).transcribe(audioBuffer, input.audioMimeType || 'audio/webm'),
+              DEMO_AGENT_CONFIG.providers.stt
+            );
+            return resp.result;
+          },
           15_000,
           'STT_TIMEOUT',
           "I'm having trouble processing your audio right now. Please try speaking again or switch to text mode."
@@ -336,24 +345,30 @@ export async function processDemoMessage(
 
   // ── Generate LLM response (with 1x retry) ─────────────────────────────
   const llmResponse = await withRetry(
-    () =>
-      withTimeout(
-        (_signal) =>
-          getDemoLLM().complete(messages, {
-            model: config.llm.model,
-            temperature: config.llm.temperature,
-            maxTokens: config.llm.maxTokens,
-            topP: config.llm.topP,
-          }),
-        30_000,
-        'LLM_TIMEOUT',
-        "I'm taking a moment to think. Please try your message again."
-      ),
-    'LLM_ERROR',
-    "I had trouble generating a response. Please try again."
-  );
-
-  const agentText = llmResponse.text;
+      () =>
+        withTimeout(
+          async (_signal) => {
+            const resp = await executeWithFailover(
+              'llm',
+              (providerId) => getLLMProvider(providerId).complete(messages, {
+                model: config.llm.model,
+                temperature: config.llm.temperature,
+                maxTokens: config.llm.maxTokens,
+                topP: config.llm.topP,
+              }),
+              DEMO_AGENT_CONFIG.providers.llm
+            );
+            return resp.result;
+          },
+          30_000,
+          'LLM_TIMEOUT',
+          "I'm taking a moment to think. Please try your message again."
+        ),
+      'LLM_ERROR',
+      "I had trouble generating a response. Please try again."
+    );
+  
+    const agentText = llmResponse.text;
 
   // ── Store agent message ─────────────────────────────────────────────────
   const processingMs = Date.now() - startTime;
@@ -367,12 +382,18 @@ export async function processDemoMessage(
   let audioMimeType: string | undefined;
   try {
     const ttsResult = await withTimeout(
-      (_signal) =>
-        getDemoTTS().synthesize(agentText, {
-          voice: persona.ttsVoice,
-          speed: config.tts.speed,
-          format: config.tts.format,
-        }),
+      async (_signal) => {
+        const resp = await executeWithFailover(
+          'tts',
+          (providerId) => getTTSProvider(providerId).synthesize(agentText, {
+            voice: persona.ttsVoice,
+            speed: config.tts.speed,
+            format: config.tts.format,
+          }),
+          DEMO_AGENT_CONFIG.providers.tts
+        );
+        return resp.result;
+      },
       15_000,
       'TTS_TIMEOUT',
       'TTS timeout'
@@ -538,18 +559,22 @@ async function generateSummary(
     .join('\n');
 
   try {
-    const response = await getDemoLLM().complete(
-      [
-        {
-          role: 'system',
-          content:
-            `You are a conversation summarizer. Generate a brief 2-3 sentence summary of the following demo conversation between a visitor and ${agentName} (KantaSwara AI agent). Focus on what the visitor was interested in and any next steps mentioned.`,
-        },
-        { role: 'user', content: transcript },
-      ],
-      { model: 'gpt-4o-mini', maxTokens: 150, temperature: 0.3 }
+    const response = await executeWithFailover(
+      'llm',
+      (providerId) => getLLMProvider(providerId).complete(
+        [
+          {
+            role: 'system',
+            content:
+              `You are a conversation summarizer. Generate a brief 2-3 sentence summary of the following demo conversation between a visitor and ${agentName} (KantaSwara AI agent). Focus on what the visitor was interested in and any next steps mentioned.`,
+          },
+          { role: 'user', content: transcript },
+        ],
+        { model: 'gpt-4o-mini', maxTokens: 150, temperature: 0.3 }
+      ),
+      DEMO_AGENT_CONFIG.providers.llm
     );
-    return response.text;
+    return response.result.text;
   } catch {
     return 'Demo conversation completed. Visit our platform to learn more about KantaSwara.';
   }

@@ -89,6 +89,7 @@ export async function executeWithFailover<T>(
   const chain = getOrderedChain(type, strategy);
   const startTime = Date.now();
   const failedProviders: string[] = [];
+  const errors: Error[] = [];
   let attemptCount = 0;
 
   // If a preferred provider is specified and healthy, try it first
@@ -126,6 +127,10 @@ export async function executeWithFailover<T>(
       };
     } catch (error) {
       const latencyMs = Date.now() - startTime;
+      
+      if (error instanceof Error) {
+        errors.push(error);
+      }
 
       if (error instanceof CircuitOpenError) {
         // Circuit is open — skip this provider
@@ -145,7 +150,7 @@ export async function executeWithFailover<T>(
   }
 
   // All providers failed
-  throw new AllProvidersFailedError(type, failedProviders);
+  throw new AllProvidersFailedError(type, failedProviders, errors);
 }
 
 // =============================================================================
@@ -215,14 +220,16 @@ function getOrderedChain(
 export class AllProvidersFailedError extends Error {
   readonly providerType: ProviderType;
   readonly failedProviders: string[];
+  readonly errors: Error[];
 
-  constructor(type: ProviderType, failedProviders: string[]) {
+  constructor(type: ProviderType, failedProviders: string[], errors: Error[]) {
     super(
       `All ${type} providers failed: ${failedProviders.join(', ')}. ` +
-      'No healthy provider available.'
+      `Last error: ${errors.length > 0 ? errors[errors.length - 1].message : 'Unknown'}`
     );
     this.name = 'AllProvidersFailedError';
     this.providerType = type;
     this.failedProviders = failedProviders;
+    this.errors = errors;
   }
 }

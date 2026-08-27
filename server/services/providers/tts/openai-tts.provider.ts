@@ -5,7 +5,9 @@
 // Uses tts-1 model for text-to-speech synthesis (optimized for low latency).
 // =============================================================================
 
-import type { TTSProvider, TTSResult, TTSOptions } from '../types';
+import type { TTSProvider, TTSResult,  TTSOptions,
+} from '../types';
+import { handleHttpError } from '../errors';
 
 const DEFAULT_MODEL = 'tts-1';
 const DEFAULT_VOICE = 'nova'; // Natural, warm female voice — good for Rani
@@ -50,8 +52,8 @@ export class OpenAITTSProvider implements TTSProvider {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`OpenAI TTS API error (${response.status}): ${error}`);
+      const errorText = await response.text();
+      handleHttpError('openai-tts', response.status, errorText);
     }
 
     const arrayBuffer = await response.arrayBuffer();
@@ -97,8 +99,8 @@ export class OpenAITTSProvider implements TTSProvider {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`OpenAI TTS API error (${response.status}): ${error}`);
+      const errorText = await response.text();
+      handleHttpError('openai-tts', response.status, errorText);
     }
 
     const reader = response.body?.getReader();

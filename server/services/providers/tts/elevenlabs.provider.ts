@@ -10,6 +10,7 @@ import type {
   TTSResult,
   TTSOptions,
 } from '../types';
+import { handleHttpError } from '../errors';
 
 const DEFAULT_VOICE_ID = '21m00Tcm4TlvDq8ikWAM'; // Rachel
 const DEFAULT_MODEL = 'eleven_turbo_v2_5';
@@ -61,8 +62,8 @@ export class ElevenLabsTTSProvider implements TTSProvider {
     );
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`ElevenLabs API error (${response.status}): ${error}`);
+      const errorText = await response.text();
+      handleHttpError('elevenlabs', response.status, errorText);
     }
 
     const arrayBuffer = await response.arrayBuffer();

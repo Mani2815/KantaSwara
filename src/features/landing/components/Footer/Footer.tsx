@@ -36,7 +36,7 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
         {/* Top Section */}
-        <div className="flex flex-col lg:flex-row justify-between items-start mb-16 gap-10">
+        <div className="flex flex-col lg:flex-row justify-between items-start mb-12 gap-10">
           {/* Brand & Socials */}
           <div className="max-w-lg">
             <Link href="/" aria-label="Home">
@@ -60,7 +60,7 @@ export function Footer() {
           </div>
 
           {/* Newsletter */}
-          <div className="w-full lg:w-auto mt-4 lg:mt-6">
+          <div className="w-full lg:w-auto mt-4 lg:mt-0">
             <h4 className="text-sm text-gray-400 mb-3">Stay up to date. Subscribe to our Newsletter</h4>
             <div className="flex items-center w-full max-w-md bg-[#121212] rounded-md overflow-hidden border border-gray-800 focus-within:border-gray-600 transition-colors">
               <input 
@@ -76,12 +76,12 @@ export function Footer() {
         </div>
 
         {/* Middle Section - Links Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-12 mb-24">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-8 mb-12">
           
           {/* PLATFORM Column */}
           <div className="lg:col-span-1">
-            <h4 className="text-xs font-bold text-gray-500 tracking-wider uppercase mb-5">Platform</h4>
-            <ul className="flex flex-col gap-2.5">
+            <h4 className="text-xs font-bold text-gray-500 tracking-wider uppercase mb-4">Platform</h4>
+            <ul className="flex flex-col gap-2">
               <li><Link href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Overview</Link></li>
               <li><Link href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Features</Link></li>
               <li><Link href="#" className="text-gray-400 hover:text-white text-sm transition-colors">AI Voice Agents</Link></li>
@@ -93,8 +93,8 @@ export function Footer() {
 
           {/* COMPANY Column */}
           <div className="lg:col-span-1">
-            <h4 className="text-xs font-bold text-gray-500 tracking-wider uppercase mb-5">Company</h4>
-            <ul className="flex flex-col gap-2.5">
+            <h4 className="text-xs font-bold text-gray-500 tracking-wider uppercase mb-4">Company</h4>
+            <ul className="flex flex-col gap-2">
               <li><Link href="#" className="text-gray-400 hover:text-white text-sm transition-colors">About Us</Link></li>
               <li><Link href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Contact Us</Link></li>
               <li><Link href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Careers</Link></li>
@@ -104,8 +104,8 @@ export function Footer() {
 
           {/* RESOURCES Column */}
           <div className="lg:col-span-1">
-            <h4 className="text-xs font-bold text-gray-500 tracking-wider uppercase mb-5">Resources</h4>
-            <ul className="flex flex-col gap-2.5">
+            <h4 className="text-xs font-bold text-gray-500 tracking-wider uppercase mb-4">Resources</h4>
+            <ul className="flex flex-col gap-2">
               <li><Link href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Documentation</Link></li>
               <li><Link href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Support</Link></li>
               <li><Link href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Privacy Policy</Link></li>
@@ -116,8 +116,8 @@ export function Footer() {
 
           {/* ENTERPRISE Column */}
           <div className="lg:col-span-1">
-            <h4 className="text-xs font-bold text-gray-500 tracking-wider uppercase mb-5">Enterprise</h4>
-            <ul className="flex flex-col gap-2.5">
+            <h4 className="text-xs font-bold text-gray-500 tracking-wider uppercase mb-4">Enterprise</h4>
+            <ul className="flex flex-col gap-2">
               <li><Link href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Organization Portal</Link></li>
               <li><Link href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Super Admin</Link></li>
               <li><Link href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Dashboard</Link></li>
@@ -129,7 +129,7 @@ export function Footer() {
         </div>
 
         {/* Bottom Section */}
-        <div className="relative pt-16 pb-8 mt-12 border-t border-gray-800 flex flex-col items-center justify-center text-center w-full">
+        <div className="relative pt-8 pb-8 mt-8 border-t border-gray-800 flex flex-col items-center justify-center text-center w-full">
 
 
           {/* Foreground Text */}

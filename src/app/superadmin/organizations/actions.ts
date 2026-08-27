@@ -74,23 +74,11 @@ export async function approveOrganization(organizationId: string) {
       profiles?.find((p) => p.role === 'org_admin' && p.email) ||
       profiles?.find((p) => p.email);
 
-    console.log('\n[DEBUG-ACTIONS] Recipient Resolution:');
-    console.log({
-      orgContactEmail: (orgData as any)?.contact_email,
-      profilesFetched: profiles?.length,
-      adminResolved: !!admin,
-      adminEmail: admin?.email,
-      adminName: admin?.full_name
-    });
+
 
     if (orgData && admin?.email) {
       try {
-        console.log('\n[DEBUG-ACTIONS] EventBus Handlers before emit:');
         const handlers = (emailEventBus as any).handlers?.get('OrganizationApproved');
-        console.log(`OrganizationApproved handler count: ${handlers?.length || 0}`);
-        if (!handlers || handlers.length === 0) {
-          console.warn('[DEBUG-ACTIONS] WARNING: No handlers registered for OrganizationApproved!');
-        }
 
         await emailEventBus.emit('OrganizationApproved', {
           organizationId,

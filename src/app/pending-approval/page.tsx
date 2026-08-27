@@ -1,5 +1,5 @@
 'use client';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { TechOrbitDisplay, Ripple, BottomGradient } from '@/features/auth/components/modern-animated-sign-in';
@@ -14,7 +14,7 @@ function PendingApprovalContent() {
   const [refreshing, setRefreshing] = useState(false);
   const [userEmail, setUserEmail] = useState('');
 
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     setRefreshing(true);
     const { data: { user } } = await supabase.auth.getUser();
     
@@ -57,11 +57,11 @@ function PendingApprovalContent() {
     
     setLoading(false);
     setRefreshing(false);
-  };
+  }, [supabase, router]);
 
   useEffect(() => {
     fetchStatus();
-  }, [supabase, router]);
+  }, [fetchStatus]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();

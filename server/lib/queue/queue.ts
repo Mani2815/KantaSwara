@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { Queue, Worker, type ConnectionOptions, type JobsOptions } from 'bullmq';
-import { getRedisClient } from '../redis/redis';
+import { getRedisClient, isRedisHealthy } from '../redis/redis';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Queue Names
@@ -113,11 +113,20 @@ export async function enqueueEmbeddingJob(data: {
   knowledgeBaseId: string;
   fileName: string;
 }): Promise<string> {
-  const queue = getQueue(QUEUE_NAMES.EMBEDDINGS);
-  const job = await queue.add('index-document', data, {
-    priority: 2,
-  });
-  return job.id || '';
+  if (!(await isRedisHealthy())) {
+    console.warn('[Queue] Redis is unavailable. Skipping enqueueEmbeddingJob.');
+    return 'redis-unavailable-fallback-id';
+  }
+  try {
+    const queue = getQueue(QUEUE_NAMES.EMBEDDINGS);
+    const job = await queue.add('index-document', data, {
+      priority: 2,
+    });
+    return job.id || '';
+  } catch (err: any) {
+    console.error('[Queue] Failed to enqueue embedding job:', err.message);
+    return 'queue-error-fallback-id';
+  }
 }
 
 /**
@@ -129,9 +138,18 @@ export async function enqueueNotificationJob(data: {
   userId?: string;
   payload: Record<string, unknown>;
 }): Promise<string> {
-  const queue = getQueue(QUEUE_NAMES.NOTIFICATIONS);
-  const job = await queue.add(`notify-${data.type}`, data);
-  return job.id || '';
+  if (!(await isRedisHealthy())) {
+    console.warn('[Queue] Redis is unavailable. Skipping enqueueNotificationJob.');
+    return 'redis-unavailable-fallback-id';
+  }
+  try {
+    const queue = getQueue(QUEUE_NAMES.NOTIFICATIONS);
+    const job = await queue.add(`notify-${data.type}`, data);
+    return job.id || '';
+  } catch (err: any) {
+    console.error('[Queue] Failed to enqueue notification job:', err.message);
+    return 'queue-error-fallback-id';
+  }
 }
 
 /**
@@ -142,9 +160,18 @@ export async function enqueueAnalyticsJob(data: {
   organizationId: string;
   payload: Record<string, unknown>;
 }): Promise<string> {
-  const queue = getQueue(QUEUE_NAMES.ANALYTICS);
-  const job = await queue.add(`analytics-${data.type}`, data);
-  return job.id || '';
+  if (!(await isRedisHealthy())) {
+    console.warn('[Queue] Redis is unavailable. Skipping enqueueAnalyticsJob.');
+    return 'redis-unavailable-fallback-id';
+  }
+  try {
+    const queue = getQueue(QUEUE_NAMES.ANALYTICS);
+    const job = await queue.add(`analytics-${data.type}`, data);
+    return job.id || '';
+  } catch (err: any) {
+    console.error('[Queue] Failed to enqueue analytics job:', err.message);
+    return 'queue-error-fallback-id';
+  }
 }
 
 // =============================================================================

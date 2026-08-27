@@ -10,6 +10,7 @@ import type {
   STTResult,
   STTOptions,
 } from '../types';
+import { handleHttpError } from '../errors';
 
 const DEFAULT_MODEL = 'nova-2';
 
@@ -54,8 +55,8 @@ export class DeepgramSTTProvider implements STTProvider {
     );
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Deepgram API error (${response.status}): ${error}`);
+      const errorText = await response.text();
+      handleHttpError('deepgram', response.status, errorText);
     }
 
     const data = await response.json();
