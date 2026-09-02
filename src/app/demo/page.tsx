@@ -776,7 +776,7 @@ export default function DemoPage() {
                     <button
                       onClick={handleSubmitFeedback}
                       disabled={feedbackRating === 0}
-                      className="w-full max-w-2xl bg-gradient-to-r from-[var(--color-primary)] to-purple-600 hover:from-[var(--color-primary-hover)] hover:to-purple-700 disabled:opacity-50 text-white font-bold py-4 px-8 rounded-2xl transition-all shadow-xl shadow-purple-500/25 flex items-center justify-center gap-2"
+                      className="w-full max-w-2xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 text-white font-bold py-4 px-8 rounded-2xl transition-all shadow-xl shadow-orange-500/25 flex items-center justify-center gap-2"
                     >
                       <Check className="w-5 h-5" /> Submit Feedback
                     </button>

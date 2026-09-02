@@ -47,3 +47,6 @@ venv/
 
 # Scratch scripts
 /scratch/
+
+# ONNX Runtime WASM files (copied by prebuild script)
+/public/wasm/

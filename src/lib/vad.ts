@@ -36,6 +36,7 @@ export class VADWrapper {
    */
   async start(): Promise<void> {
     try {
+
       this.vad = await MicVAD.new({
         // ── Speech detection thresholds ────────────────────────────
         positiveSpeechThreshold: 0.6,
@@ -61,8 +62,13 @@ export class VADWrapper {
         model: 'v5',
 
         // ── Asset paths ───────────────────────────────────────────
-        // Serve from public/ to avoid CORS issues
+        // Serve VAD model + worklet from public/vad/
         baseAssetPath: '/vad/',
+        // Serve ONNX Runtime WASM binaries from public/wasm/
+        // (copied there by scripts/copy-ort-wasm.mjs prebuild step).
+        // Without this, ORT defaults to './' which makes the bundler
+        // try to resolve WASM as JS chunks → 404 in production.
+        onnxWASMBasePath: '/wasm/',
 
         // ── Callbacks ─────────────────────────────────────────────
         onSpeechStart: () => {
