@@ -21,7 +21,7 @@ export async function GET() {
     ws.on('message', (data: WebSocketData) => {
       const isBinary = data instanceof ArrayBuffer || data instanceof Uint8Array;
       orchestrator.handleMessage(
-        isBinary ? Buffer.from(data as ArrayBuffer) : data,
+        (isBinary ? Buffer.from(data as ArrayBuffer) : data) as import('ws').RawData,
         isBinary
       );
     });

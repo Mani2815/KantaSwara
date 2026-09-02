@@ -50,11 +50,8 @@ async function startServer() {
 
     const orchestrator = new ConversationOrchestrator(ws as unknown as import('ws').default);
 
-    ws.on('message', (data: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => {
-      orchestrator.handleMessage(
-        isBinary ? Buffer.from(data as ArrayBuffer) : data.toString(),
-        isBinary
-      );
+    ws.on('message', (data: import('ws').RawData, isBinary: boolean) => {
+      orchestrator.handleMessage(data, isBinary);
     });
 
     ws.on('close', (code, reason) => {
