@@ -1,8 +1,11 @@
 [providers.node]
 nodeVersion = "22"
 
+[phases.setup]
+nixPkgs = ["nodejs_22"]
+
 [phases.install]
-cmds = ["npm --prefix server ci --omit=dev --ignore-scripts"]
+cmds = ["npm ci --omit=dev --ignore-scripts"]
 
 [phases.build]
 cmds = []

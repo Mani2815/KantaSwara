@@ -2,29 +2,17 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": null,
     "watchPatterns": [
-      "server/standalone-ws.ts",
-      "server/services/demo/conversation-orchestrator.ts",
-      "server/services/demo/deepgram-live-stt.ts",
-      "server/services/demo/flux-tts-stream.ts",
-      "server/services/demo/domain-personas.config.ts",
-      "server/services/demo/demo.config.ts",
-      "server/services/providers/llm/groq.provider.ts",
-      "server/services/providers/errors.ts",
-      "server/services/providers/types.ts",
-      "server/package.json",
-      "server/package-lock.json",
+      "server/**",
       "package.json",
-      ".nvmrc",
+      "package-lock.json",
       "tsconfig.json",
-      "nixpacks.toml"
+      "nixpacks.toml",
+      "railway.json"
     ]
   },
   "deploy": {
-    "startCommand": "npm --prefix server run start",
-    "healthcheckPath": "/health",
-    "healthcheckTimeout": 30,
+    "startCommand": "npm run start:ws",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
