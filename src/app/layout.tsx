@@ -45,13 +45,7 @@ export default function RootLayout({
             } catch (_) {}
           `
         }} />
-        <link
-          rel="preload"
-          href="/fonts/MonaSans-Variable.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
+
         <link
           rel="preload"
           href="/fonts/Inter-Variable.woff2"
