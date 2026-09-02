@@ -21,7 +21,12 @@ export interface DomainPersona {
   greeting: string;
   systemPrompt: string;
   sampleTopics: string[];
+  /** Deepgram Aura voice for REST TTS (greetings + fallback) */
   ttsVoice: string;
+  /** Deepgram Flux voice for streaming TTS (primary, conversational turns) */
+  fluxVoice: string;
+  /** Aura fallback voice ID (used if Flux connection fails) */
+  auraFallbackVoice: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -43,6 +48,8 @@ const REAL_ESTATE_PERSONA: DomainPersona = {
     'Home loan guidance',
   ],
   ttsVoice: 'aura-arcas-en', // Deepgram Aura: confident, professional male
+  fluxVoice: 'flux-cole-en', // Deepgram Flux: friendly, energetic male
+  auraFallbackVoice: 'aura-arcas-en',
   greeting: `Hello! I'm Arjun, your AI property sales assistant at Prestige Homes. I can help you explore residential and commercial properties, check pricing and availability, and schedule a site visit. What kind of property are you looking for today?`,
 
   systemPrompt: `You are Arjun, an AI-powered property sales assistant at Prestige Homes. This is a demo by KantaSwara to showcase AI voice agents for real estate.
@@ -113,6 +120,8 @@ const EDTECH_PERSONA: DomainPersona = {
     'Placement support',
   ],
   ttsVoice: 'aura-luna-en', // Deepgram Aura: clear, professional female
+  fluxVoice: 'flux-sienna-en', // Deepgram Flux: warm, caring female
+  auraFallbackVoice: 'aura-luna-en',
   greeting: `Hi! I'm Kavitha, your AI admission counselor at UpSkill Academy. I can help you explore our courses, check your eligibility, understand the fees, and schedule a free demo class. What are you looking to learn today?`,
 
   systemPrompt: `You are Kavitha, an AI-powered admission counselor at UpSkill Academy. This is a demo by KantaSwara to showcase AI voice agents for EdTech.
@@ -202,6 +211,8 @@ const AUTOMOBILE_PERSONA: DomainPersona = {
     'Exchange & offers',
   ],
   ttsVoice: 'aura-orion-en', // Deepgram Aura: deep, resonant male
+  fluxVoice: 'flux-cliff-en', // Deepgram Flux: confident, calm male
+  auraFallbackVoice: 'aura-orion-en',
   greeting: `Hey there! I'm Rohan, your AI vehicle consultant at DriveWell Motors. I can help you explore our car lineup, compare models, check pricing and EMI options, and book a test drive. What kind of vehicle are you looking for today?`,
 
   systemPrompt: `You are Rohan, an AI-powered vehicle sales consultant at DriveWell Motors. This is a demo by KantaSwara to showcase AI voice agents for the automobile industry.
