@@ -1,2 +1,8 @@
 [providers.node]
 nodeVersion = "22"
+
+[phases.install]
+cmds = ["npm --prefix server ci --omit=dev --ignore-scripts"]
+
+[phases.build]
+cmds = []

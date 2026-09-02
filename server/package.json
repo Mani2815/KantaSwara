@@ -1,0 +1,15 @@
+{
+  "name": "kantaswara-realtime-voice-backend",
+  "private": true,
+  "version": "1.0.0",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "start": "tsx standalone-ws.ts"
+  },
+  "dependencies": {
+    "tsx": "4.23.13",
+    "ws": "8.21.3"
+  }
+}
