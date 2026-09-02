@@ -2,7 +2,7 @@
 // Custom Dev Server with WebSocket Support
 // =============================================================================
 // Next.js 16's dev server (Turbopack) does not support WebSocket upgrades.
-// The Vercel-only `experimental_upgradeWebSocket` API is used in production.
+// This local development server hosts the same WebSocket path as Railway.
 //
 // This custom server wraps Next.js and adds native WebSocket upgrade handling
 // so the voice demo works identically in local development.

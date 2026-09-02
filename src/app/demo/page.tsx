@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useDemo } from '@/hooks/useDemo';
+import { useDemo, type DemoMode } from '@/hooks/useDemo';
 import { VoicePoweredOrb } from '@/components/ui/voice-powered-orb';
 import type { DemoDomain } from '@server/services/demo/domain-personas.config';
 
@@ -146,7 +146,7 @@ export default function DemoPage() {
   const [selectedDomain, setSelectedDomain] = useState<DemoDomain | null>(null);
   const [phase, setPhase] = useState<'select' | 'session'>('select');
   const [textInput, setTextInput] = useState('');
-  const [inputMode, setInputMode] = useState<'voice' | 'text'>('text');
+  const [selectedMode, setSelectedMode] = useState<DemoMode>('text');
   const [feedbackRating, setFeedbackRating] = useState<number>(0);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
@@ -157,6 +157,8 @@ export default function DemoPage() {
     startSession,
     endSession,
     sendTextMessage,
+    startRecording,
+    stopRecording,
     startListening,
     stopListening,
     stopAudioPlayback,
@@ -171,19 +173,13 @@ export default function DemoPage() {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [state.transcript]);
 
-  // Force text mode if voice is not supported in this browser
-  useEffect(() => {
-    if (!state.voiceSupported && inputMode === 'voice') {
-      setInputMode('text');
-    }
-  }, [state.voiceSupported, inputMode]);
-
   // ── Start demo with selected domain ─────────────────────────────────────
   const handleStartDemo = useCallback(async () => {
     if (!selectedDomain) return;
+    if (selectedMode === 'voice' && !state.voiceSupported) return;
     setPhase('session');
-    await startSession(selectedDomain);
-  }, [selectedDomain, startSession]);
+    await startSession(selectedDomain, selectedMode);
+  }, [selectedDomain, selectedMode, startSession, state.voiceSupported]);
 
   // ── Back to domain selection ────────────────────────────────────────────
   const handleBackToSelection = useCallback(() => {
@@ -344,19 +340,40 @@ export default function DemoPage() {
             transition={{ delay: 0.5 }}
             className="flex flex-col items-center gap-3"
           >
+            <div className="flex rounded-xl border border-[var(--color-border-default)] bg-[var(--color-bg-surface)] p-1 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setSelectedMode('text')}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${selectedMode === 'text' ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-base)]'}`}
+              >
+                <Keyboard className="mr-1.5 inline-block h-4 w-4" /> Text Mode
+              </button>
+              <button
+                type="button"
+                onClick={() => state.voiceSupported && setSelectedMode('voice')}
+                disabled={!state.voiceSupported}
+                title={!state.voiceSupported ? 'Real-Time Voice is temporarily unavailable.' : 'Use real-time voice'}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${selectedMode === 'voice' ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-base)]'}`}
+              >
+                <Mic className="mr-1.5 inline-block h-4 w-4" /> Real-Time Voice
+              </button>
+            </div>
+            {!state.voiceSupported && (
+              <p className="text-xs text-[var(--color-text-muted)]">Real-Time Voice is temporarily unavailable.</p>
+            )}
             <button
               id="start-demo-button"
               onClick={handleStartDemo}
               disabled={!selectedDomain}
               className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3.5 px-10 rounded-xl flex items-center gap-2.5 transition-all shadow-lg shadow-[var(--color-primary)]/20 hover:shadow-xl hover:shadow-[var(--color-primary)]/30 text-base"
             >
-              <Phone className="w-5 h-5" />
+              {selectedMode === 'voice' ? <Phone className="w-5 h-5" /> : <MessageSquare className="w-5 h-5" />}
               {selectedDomain
-                ? `Start ${getDomainData(selectedDomain).title} Demo`
+                ? `Start ${getDomainData(selectedDomain).title} ${selectedMode === 'voice' ? 'Voice' : 'Text'} Demo`
                 : 'Select a domain to begin'}
             </button>
             <p className="text-[var(--color-text-muted)] text-xs">
-              No login required • Microphone optional — you can also type
+              No login required • Text mode works without real-time voice
             </p>
           </motion.div>
         </div>
@@ -550,12 +567,11 @@ export default function DemoPage() {
                     {/* Secondary Buttons Row 1 */}
                     <div className="grid grid-cols-2 gap-3 mt-1">
                       <button
-                        onClick={() => setInputMode(inputMode === 'text' ? 'voice' : 'text')}
-                        className="flex items-center justify-center gap-2 bg-[var(--color-bg-base)] hover:bg-[var(--color-border-default)] border border-[var(--color-border-default)] text-[var(--color-text-primary)] font-medium py-3 px-4 rounded-xl transition-all text-sm"
-                      >
-                        {inputMode === 'text' ? <Mic className="w-4 h-4" /> : <Keyboard className="w-4 h-4" />}
-                        {inputMode === 'text' ? 'Switch to Voice' : 'Switch to Text'}
-                      </button>
+                    onClick={handleBackToSelection}
+                    className="flex items-center justify-center gap-2 bg-[var(--color-bg-base)] hover:bg-[var(--color-border-default)] border border-[var(--color-border-default)] text-[var(--color-text-primary)] font-medium py-3 px-4 rounded-xl transition-all text-sm"
+                  >
+                    <ArrowLeft className="w-4 h-4" /> Change Mode
+                  </button>
                       <button
                         onClick={stopAudioPlayback}
                         className="flex items-center justify-center gap-2 bg-[var(--color-bg-base)] hover:bg-[var(--color-border-default)] border border-[var(--color-border-default)] text-[var(--color-text-primary)] font-medium py-3 px-4 rounded-xl transition-all text-sm"
@@ -694,7 +710,7 @@ export default function DemoPage() {
               </div>
               
               {/* Text Input area when in Text Mode */}
-              {isSessionActive && inputMode === 'text' && (
+              {isSessionActive && state.mode === 'text' && (
                 <div className="p-4 bg-[var(--color-bg-surface)]/90 backdrop-blur-xl border-t border-[var(--color-border-default)]">
                   <div className="flex items-center gap-3">
                     <input
@@ -713,7 +729,17 @@ export default function DemoPage() {
                     >
                       <Send className="w-5 h-5" />
                     </button>
+                    <button
+                      type="button"
+                      onClick={state.isRecording ? stopRecording : startRecording}
+                      disabled={state.isProcessing}
+                      title={state.isRecording ? 'Stop recording' : 'Record a voice message'}
+                      className={`p-3.5 rounded-xl transition-all shadow-lg disabled:opacity-50 ${state.isRecording ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse' : 'bg-[var(--color-bg-base)] hover:bg-[var(--color-border-default)] border border-[var(--color-border-default)] text-[var(--color-text-primary)]'}`}
+                    >
+                      {state.isRecording ? <Square className="w-5 h-5 fill-current" /> : <Mic className="w-5 h-5" />}
+                    </button>
                   </div>
+                  {state.isRecording && <p className="mt-2 text-xs font-medium text-red-500">Recording… tap stop to send.</p>}
                 </div>
               )}
             </div>

@@ -1,33 +1,23 @@
 // =============================================================================
 // Demo Voice WebSocket Route Handler
 // =============================================================================
-// Vercel native WebSocket upgrade for real-time streaming voice demo.
-// Uses experimental_upgradeWebSocket from @vercel/functions.
+// Voice streaming is intentionally not hosted by Vercel. The browser connects
+// directly to the Railway standalone server using NEXT_PUBLIC_WS_URL.
 //
-// The connection is "pinned" to a specific Function instance for its duration.
-// Reconnection/resume protocol handles function timeouts and network drops.
+// This route remains as a discoverable API response for callers still using the
+// old path; it must never upgrade a WebSocket or instantiate an orchestrator.
 // =============================================================================
 
-import { experimental_upgradeWebSocket } from '@vercel/functions';
-import type { WebSocketData } from '@vercel/functions';
-import { ConversationOrchestrator } from '@server/services/demo/conversation-orchestrator';
+import { NextResponse } from 'next/server';
 
-export const maxDuration = 60; // Maximize WebSocket connection lifetime on Vercel (Hobby limit)
+export const runtime = 'nodejs';
 
-export async function GET() {
-  return experimental_upgradeWebSocket((ws) => {
-    const orchestrator = new ConversationOrchestrator(ws as unknown as import('ws').default);
-
-    ws.on('message', (data: WebSocketData) => {
-      const isBinary = data instanceof ArrayBuffer || data instanceof Uint8Array;
-      orchestrator.handleMessage(
-        (isBinary ? Buffer.from(data as ArrayBuffer) : data) as import('ws').RawData,
-        isBinary
-      );
-    });
-
-    ws.on('close', () => {
-      orchestrator.handleDisconnect();
-    });
-  });
+export function GET() {
+  return NextResponse.json(
+    {
+      code: 'VOICE_BACKEND_EXTERNAL',
+      message: 'Real-time Voice is served by the configured Railway WebSocket backend.',
+    },
+    { status: 426 }
+  );
 }
