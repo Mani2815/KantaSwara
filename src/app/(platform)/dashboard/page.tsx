@@ -9,7 +9,7 @@ import {
   AlertCircle, ShieldCheck, PlayCircle, BookOpen,
   Calendar, LineChart, Server, Bell, History
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {

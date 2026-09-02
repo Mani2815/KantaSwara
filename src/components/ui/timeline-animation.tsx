@@ -21,7 +21,7 @@ export const TimelineContent = ({
   className,
 }: TimelineContentProps) => {
   const isInView = useInView(timelineRef, { once: true, margin: "-50px" });
-  const Component = motion[as as keyof typeof motion] as React.ElementType;
+  const Component = motion[as as keyof typeof motion] as any;
 
   return (
     <Component
