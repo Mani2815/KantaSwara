@@ -10,6 +10,7 @@
     "dev": "tsx server/dev-server.ts",
     "build": "next build",
     "start": "next start",
+    "start:ws": "tsx server/standalone-ws.ts",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "predev": "node scripts/validate-env.mjs && node scripts/validate-db.mjs && node scripts/copy-ort-wasm.mjs",
