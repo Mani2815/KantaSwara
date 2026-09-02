@@ -19,7 +19,7 @@
   }
 }
 
-.navbar--scrolled {
+.navbar--hide-top-bar {
   top: 0 !important;
 }
 

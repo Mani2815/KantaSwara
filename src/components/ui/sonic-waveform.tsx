@@ -166,7 +166,7 @@ const SonicWaveformHero = () => {
                     <Link
                         href="/demo"
                         id="hero-try-demo-btn"
-                        className="px-8 py-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg shadow-lg shadow-orange-500/25 transition-all duration-300 flex items-center gap-2 hover:scale-[1.02]"
+                        className="px-8 py-4 bg-white hover:bg-gray-100 text-black font-semibold rounded-lg shadow-lg shadow-white/25 transition-all duration-300 flex items-center gap-2 hover:scale-[1.02]"
                     >
                         <Mic className="h-5 w-5" />
                         Try Live Demo

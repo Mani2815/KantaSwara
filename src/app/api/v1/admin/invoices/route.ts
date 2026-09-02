@@ -5,38 +5,43 @@ import { generateInvoiceNumber, calculateInvoiceTotals } from '@/lib/billing/hel
 
 // GET /api/v1/admin/invoices — List all invoices (admin)
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const status = searchParams.get('status') || undefined;
-  const type = searchParams.get('type') || undefined;
-  const orgId = searchParams.get('orgId') || undefined;
-  const page = parseInt(searchParams.get('page') || '1');
-  const limit = parseInt(searchParams.get('limit') || '20');
+  try {
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get('status') || undefined;
+    const type = searchParams.get('type') || undefined;
+    const orgId = searchParams.get('orgId') || undefined;
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
 
-  const invoices = await prisma.invoice.findMany({
-    where: {
-      ...(status && { paymentStatus: status as any }),
-      ...(type && { type }),
-      ...(orgId && { organizationId: orgId }),
-    },
-    include: {
-      organization: { select: { name: true, slug: true } },
-      items: true,
-      payments: { orderBy: { createdAt: 'desc' }, take: 1 },
-    },
-    orderBy: { createdAt: 'desc' },
-    skip: (page - 1) * limit,
-    take: limit,
-  });
+    const invoices = await prisma.invoice.findMany({
+      where: {
+        ...(status && { paymentStatus: status as any }),
+        ...(type && { type }),
+        ...(orgId && { organizationId: orgId }),
+      },
+      include: {
+        organization: { select: { name: true, slug: true } },
+        items: true,
+        payments: { orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
 
-  const total = await prisma.invoice.count({
-    where: {
-      ...(status && { paymentStatus: status as any }),
-      ...(type && { type }),
-      ...(orgId && { organizationId: orgId }),
-    },
-  });
+    const total = await prisma.invoice.count({
+      where: {
+        ...(status && { paymentStatus: status as any }),
+        ...(type && { type }),
+        ...(orgId && { organizationId: orgId }),
+      },
+    });
 
-  return NextResponse.json({ data: invoices, meta: { total, page, limit } });
+    return NextResponse.json({ data: invoices, meta: { total, page, limit } });
+  } catch (error) {
+    console.error('[GET /admin/invoices]', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
 }
 
 // POST /api/v1/admin/invoices — Create invoice manually
