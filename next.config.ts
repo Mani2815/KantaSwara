@@ -3,6 +3,21 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
+
+  // onnxruntime-web is browser-only — exclude from server bundling
+  serverExternalPackages: ['onnxruntime-web'],
+
+  // Next.js 16 uses Turbopack by default.
+  // onnxruntime-web/wasm has "node": null in its exports map, which blocks
+  // Turbopack's SSR resolution. Alias it directly to the CJS dist file,
+  // bypassing the exports map entirely.
+  // WASM binaries are served from public/wasm/ via the prebuild script.
+  turbopack: {
+    resolveAlias: {
+      'onnxruntime-web/wasm': './node_modules/onnxruntime-web/dist/ort.wasm.min.js',
+    },
+  },
+
   async headers() {
     return [
       {

@@ -12,6 +12,8 @@ import { experimental_upgradeWebSocket } from '@vercel/functions';
 import type { WebSocketData } from '@vercel/functions';
 import { ConversationOrchestrator } from '@server/services/demo/conversation-orchestrator';
 
+export const maxDuration = 60; // Maximize WebSocket connection lifetime on Vercel (Hobby limit)
+
 export async function GET() {
   return experimental_upgradeWebSocket((ws) => {
     const orchestrator = new ConversationOrchestrator(ws as unknown as import('ws').default);
@@ -19,7 +21,7 @@ export async function GET() {
     ws.on('message', (data: WebSocketData) => {
       const isBinary = data instanceof ArrayBuffer || data instanceof Uint8Array;
       orchestrator.handleMessage(
-        isBinary ? Buffer.from(data as ArrayBuffer) : data,
+        (isBinary ? Buffer.from(data as ArrayBuffer) : data) as import('ws').RawData,
         isBinary
       );
     });

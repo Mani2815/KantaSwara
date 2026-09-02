@@ -268,7 +268,10 @@ export function IndustryDemo() {
             </motion.div>
 
             <div className={styles.panel_footer}>
-              <button className={styles.demo_btn}>
+              <button 
+                className={styles.demo_btn}
+                onClick={() => window.open('/demo', '_blank')}
+              >
                 <Mic size={18} /> Start Voice Demo
               </button>
             </div>

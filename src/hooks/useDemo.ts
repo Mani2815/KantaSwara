@@ -291,7 +291,10 @@ export function useDemo() {
 
         // 2. Build WebSocket URL
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/api/v1/demo/ws`;
+        // In local development, we run the custom WS server on port 3001 to bypass Next.js proxy
+        const isDev = process.env.NODE_ENV !== 'production';
+        const wsHost = isDev ? 'localhost:3001' : window.location.host;
+        const wsUrl = `${protocol}//${wsHost}/api/v1/demo/ws`;
 
         // 3. Connect WebSocket
         const ws = new WebSocket(wsUrl);
