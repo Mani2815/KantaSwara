@@ -12,6 +12,8 @@ import { experimental_upgradeWebSocket } from '@vercel/functions';
 import type { WebSocketData } from '@vercel/functions';
 import { ConversationOrchestrator } from '@server/services/demo/conversation-orchestrator';
 
+export const maxDuration = 60; // Maximize WebSocket connection lifetime on Vercel (Hobby limit)
+
 export async function GET() {
   return experimental_upgradeWebSocket((ws) => {
     const orchestrator = new ConversationOrchestrator(ws as unknown as import('ws').default);
