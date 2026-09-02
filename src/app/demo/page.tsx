@@ -163,6 +163,7 @@ export default function DemoPage() {
     submitFeedback,
     dismissError,
     reset,
+    getAnalyser,
   } = useDemo();
 
   // Auto-scroll transcript
@@ -450,7 +451,7 @@ export default function DemoPage() {
               
               {/* Voice Orb */}
               <div className="w-40 h-40 lg:w-48 lg:h-48 mb-6 relative flex items-center justify-center shrink-0">
-                <VoicePoweredOrb status={state.status} className="z-10" />
+                <VoicePoweredOrb status={state.status} analyser={getAnalyser()} className="z-10" />
               </div>
 
               <h2 className="text-[var(--color-text-primary)] text-2xl font-bold mb-1 text-center">{state.agentName}</h2>
