@@ -1,277 +1,338 @@
-'use client';
+"use client";
 
-import React, { useEffect, useRef } from 'react';
-import { Renderer, Camera, Transform, Program, Mesh, Sphere } from 'ogl';
+import React, { useRef, useMemo, useEffect } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { Sphere } from "@react-three/drei";
+import * as THREE from "three";
+import { cn } from "@/lib/utils/cn";
+import type { DemoStatus } from "@/hooks/useDemo";
 
-export type OrbStatus = 'idle' | 'listening' | 'thinking' | 'speaking' | 'ended' | 'connecting' | 'active' | 'processing' | 'playing' | 'error';
+// ============================================================================
+// GLSL SHADERS
+// ============================================================================
 
-interface VoicePoweredOrbProps {
-  status: OrbStatus;
+const noise3D = `
+// Simplex 3D Noise 
+// by Ian McEwan, Ashima Arts
+vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}
+vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}
+
+float snoise(vec3 v){ 
+  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+
+  vec3 i  = floor(v + dot(v, C.yyy) );
+  vec3 x0 = v - i + dot(i, C.xxx) ;
+
+  vec3 g = step(x0.yzx, x0.xyz);
+  vec3 l = 1.0 - g;
+  vec3 i1 = min( g.xyz, l.zxy );
+  vec3 i2 = max( g.xyz, l.zxy );
+
+  vec3 x1 = x0 - i1 + 1.0 * C.xxx;
+  vec3 x2 = x0 - i2 + 2.0 * C.xxx;
+  vec3 x3 = x0 - 1.0 + 3.0 * C.xxx;
+
+  i = mod(i, 289.0 ); 
+  vec4 p = permute( permute( permute( 
+             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+           + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
+           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+
+  float n_ = 1.0/7.0;
+  vec3  ns = n_ * D.wyz - D.xzx;
+
+  vec4 j = p - 49.0 * floor(p * ns.z *ns.z);
+
+  vec4 x_ = floor(j * ns.z);
+  vec4 y_ = floor(j - 7.0 * x_ );
+
+  vec4 x = x_ *ns.x + ns.yyyy;
+  vec4 y = y_ *ns.x + ns.yyyy;
+  vec4 h = 1.0 - abs(x) - abs(y);
+
+  vec4 b0 = vec4( x.xy, y.xy );
+  vec4 b1 = vec4( x.zw, y.zw );
+
+  vec4 s0 = floor(b0)*2.0 + 1.0;
+  vec4 s1 = floor(b1)*2.0 + 1.0;
+  vec4 sh = -step(h, vec4(0.0));
+
+  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+
+  vec3 p0 = vec3(a0.xy,h.x);
+  vec3 p1 = vec3(a0.zw,h.y);
+  vec3 p2 = vec3(a1.xy,h.z);
+  vec3 p3 = vec3(a1.zw,h.w);
+
+  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+  p0 *= norm.x;
+  p1 *= norm.y;
+  p2 *= norm.z;
+  p3 *= norm.w;
+
+  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+  m = m * m;
+  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), 
+                                dot(p2,x2), dot(p3,x3) ) );
+}
+`;
+
+const vertexShader = `
+uniform float uTime;
+uniform float uAmplitude;
+varying vec3 vNormal;
+varying vec3 vViewPosition;
+varying vec3 vPosition;
+
+void main() {
+  vNormal = normalize(normalMatrix * normal);
+  vPosition = position;
+  vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+  vViewPosition = -mvPosition.xyz;
+  gl_Position = projectionMatrix * mvPosition;
+}
+`;
+
+const fragmentShader = `
+uniform float uTime;
+uniform float uAmplitude;
+uniform vec3 uColorBase;
+uniform vec3 uColorGlow;
+uniform vec3 uColorCore;
+
+varying vec3 vNormal;
+varying vec3 vViewPosition;
+varying vec3 vPosition;
+
+${noise3D}
+
+void main() {
+  // 1. Soft Fresnel Edge Falloff
+  vec3 normal = normalize(vNormal);
+  vec3 viewDir = normalize(vViewPosition);
+  float fresnel = dot(normal, viewDir);
+  
+  // Smoothstep to fade alpha out safely before the sphere edge
+  float edgeAlpha = smoothstep(0.1, 0.7, fresnel);
+  
+  // 2. Layered Domain Warping (Aurora / Plasma Ribbons)
+  float time = uTime * 0.2; // Slower flow
+  vec3 p = vPosition * 0.5; // Lower frequency, no tight marbles
+  
+  // Base noise
+  float q1 = snoise(p + vec3(time, time * 0.5, 0.0));
+  float q2 = snoise(p + vec3(-time * 0.8, time * 1.2, time * 0.5));
+  
+  // Domain warp
+  float q = snoise(p + vec3(q1, q2, time) * 0.5); // Lower warp scale (0.5 instead of 1.5)
+  
+  // Flowing ribbon bands using sine waves
+  float band1 = sin(q * 2.0 + time * 1.0);
+  float band2 = sin(q1 * 1.5 - time * 0.8);
+  float bands = (band1 + band2) * 0.5;
+  bands = smoothstep(-0.1, 0.9, bands); // Softer ribbons
+  
+  // 3. Audio Reactivity
+  float audioGlow = uAmplitude * 0.6; // Less blown out
+  
+  // 4. Color Drifting
+  // Base gradient: Periwinkle blue to violet
+  vec3 color = mix(uColorBase, uColorGlow, bands + audioGlow * 0.2);
+  
+  // Add drifting warm magenta/pink blob
+  float blobNoise = snoise(p * 0.4 + vec3(time * 0.3, -time * 0.2, time));
+  float blobIntensity = smoothstep(0.2, 0.9, blobNoise) * 0.35; // Capped at 35% opacity
+  color = mix(color, vec3(1.0, 0.2, 0.6), blobIntensity);
+  
+  // Inner core brightness (soft lavender/blue, NOT pure white)
+  float coreIntensity = smoothstep(0.6, 1.0, fresnel);
+  color = mix(color, uColorCore, coreIntensity * bands * 0.5); // Capped
+  
+  // 5. Final Alpha Composition
+  float finalAlpha = edgeAlpha * (0.6 + bands * 0.4 + audioGlow * 0.4);
+  
+  gl_FragColor = vec4(color, finalAlpha);
+}
+`;
+
+// ============================================================================
+// CONSTANTS & TYPES
+// ============================================================================
+
+interface VoiceOrbProps {
+  status?: DemoStatus | "active";
+  analyser?: AnalyserNode | null;
   className?: string;
+  enableVoiceControl?: boolean;
 }
 
-const vertex = `
-  attribute vec3 position;
-  attribute vec3 normal;
-  attribute vec2 uv;
+const COLORS = {
+  brandOrange: new THREE.Color("#ff6600"),    // Primary brand orange
+  lightOrange: new THREE.Color("#ff9966"),    // Soft orange glow
+  peach: new THREE.Color("#ffccb3"),          // Soft core
+  yellowGlow: new THREE.Color("#ffd633"),     // Golden glow for active state
+  deepOrange: new THREE.Color("#cc5200"),
+  magentaAccent: new THREE.Color("#ff3366"),  // Warm accent for processing
+  white: new THREE.Color("#ffffff"),
+  grey: new THREE.Color("#4b5563"),
+};
 
-  uniform mat4 modelViewMatrix;
-  uniform mat4 projectionMatrix;
-  uniform mat3 normalMatrix;
+const STATE_CONFIG = {
+  idle: {
+    base: COLORS.brandOrange,
+    glow: COLORS.lightOrange,
+    core: COLORS.peach,
+    speedMultiplier: 1.0,
+    baseScale: 1.0,
+  },
+  listening: {
+    base: COLORS.yellowGlow,
+    glow: COLORS.brandOrange,
+    core: COLORS.peach,
+    speedMultiplier: 1.5,
+    baseScale: 1.05,
+  },
+  processing: {
+    base: COLORS.brandOrange,
+    glow: COLORS.magentaAccent,
+    core: COLORS.peach,
+    speedMultiplier: 2.5,
+    baseScale: 1.0,
+  },
+  playing: {
+    base: COLORS.magentaAccent,
+    glow: COLORS.lightOrange,
+    core: COLORS.peach,
+    speedMultiplier: 1.8,
+    baseScale: 1.1,
+  },
+  error: {
+    base: new THREE.Color("#ef4444"),
+    glow: new THREE.Color("#991b1b"),
+    core: COLORS.peach,
+    speedMultiplier: 0.5,
+    baseScale: 0.95,
+  },
+  ended: {
+    base: COLORS.grey,
+    glow: new THREE.Color("#1f2937"),
+    core: COLORS.grey,
+    speedMultiplier: 0.2,
+    baseScale: 0.9,
+  },
+};
 
-  uniform float uTime;
-  uniform float uDisplacement;
-  uniform float uSpeed;
+const mapStatus = (status: DemoStatus | "active" | undefined) => {
+  if (!status) return STATE_CONFIG.idle;
+  if (status === 'active') return STATE_CONFIG.listening;
+  if (status === 'idle' || status === 'connecting') return STATE_CONFIG.idle;
+  if (status === 'processing') return STATE_CONFIG.processing;
+  if (status === 'playing') return STATE_CONFIG.playing;
+  if (status === 'error') return STATE_CONFIG.error;
+  if (status === 'ended') return STATE_CONFIG.ended;
+  return STATE_CONFIG.idle;
+};
 
-  varying vec2 vUv;
-  varying vec3 vNormal;
+// ============================================================================
+// 3D ORB MESH COMPONENT
+// ============================================================================
 
-  // Simple noise function
-  vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-  vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-  vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
-  vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-  
-  float snoise(vec3 v) {
-    const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
-    const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
-
-    // First corner
-    vec3 i  = floor(v + dot(v, C.yyy) );
-    vec3 x0 = v - i + dot(i, C.xxx) ;
-
-    // Other corners
-    vec3 g = step(x0.yzx, x0.xyz);
-    vec3 l = 1.0 - g;
-    vec3 i1 = min( g.xyz, l.zxy );
-    vec3 i2 = max( g.xyz, l.zxy );
-
-    vec3 x1 = x0 - i1 + C.xxx;
-    vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y
-    vec3 x3 = x0 - D.yyy;      // -1.0+3.0*C.x = -0.5 = -D.y
-
-    // Permutations
-    i = mod289(i);
-    vec4 p = permute( permute( permute(
-               i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
-             + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
-             + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
-
-    // Gradients: 7x7 points over a square, mapped onto an octahedron.
-    // The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
-    float n_ = 0.142857142857; // 1.0/7.0
-    vec3  ns = n_ * D.wyz - D.xzx;
-
-    vec4 j = p - 49.0 * floor(p * ns.z * ns.z);  //  mod(p,7*7)
-
-    vec4 x_ = floor(j * ns.z);
-    vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
-
-    vec4 x = x_ *ns.x + ns.yyyy;
-    vec4 y = y_ *ns.x + ns.yyyy;
-    vec4 h = 1.0 - abs(x) - abs(y);
-
-    vec4 b0 = vec4( x.xy, y.xy );
-    vec4 b1 = vec4( x.zw, y.zw );
-
-    vec4 s0 = floor(b0)*2.0 + 1.0;
-    vec4 s1 = floor(b1)*2.0 + 1.0;
-    vec4 sh = -step(h, vec4(0.0));
-
-    vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
-    vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
-
-    vec3 p0 = vec3(a0.xy,h.x);
-    vec3 p1 = vec3(a0.zw,h.y);
-    vec3 p2 = vec3(a1.xy,h.z);
-    vec3 p3 = vec3(a1.zw,h.w);
-
-    //Normalise gradients
-    vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
-    p0 *= norm.x;
-    p1 *= norm.y;
-    p2 *= norm.z;
-    p3 *= norm.w;
-
-    // Mix final noise value
-    vec4 m = max(0.5 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-    m = m * m;
-    return 105.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1),
-                                  dot(p2,x2), dot(p3,x3) ) );
-  }
-
-  void main() {
-    vUv = uv;
-    vNormal = normalize(normalMatrix * normal);
-
-    float noise = snoise(position * 2.0 + uTime * uSpeed);
-    vec3 newPosition = position + normal * noise * uDisplacement;
-
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
-  }
-`;
-
-const fragment = `
-  precision highp float;
-
-  uniform vec3 uColorA;
-  uniform vec3 uColorB;
-  uniform float uTime;
-
-  varying vec2 vUv;
-  varying vec3 vNormal;
-
-  void main() {
-    float intensity = pow(0.7 - dot(vNormal, vec3(0, 0, 1.0)), 2.0);
-    vec3 glow = mix(uColorA, uColorB, intensity);
-    gl_FragColor = vec4(glow, 1.0);
-  }
-`;
-
-export function VoicePoweredOrb({ status, className = '' }: VoicePoweredOrbProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const rendererRef = useRef<Renderer | null>(null);
-  const programRef = useRef<Program | null>(null);
-  const rafId = useRef<number>(0);
-
-  // Parse status to standard orb states
-  let currentStatus = status;
-  if (status === 'connecting' || status === 'idle' || status === 'error') currentStatus = 'idle';
-  else if (status === 'active' || status === 'listening') currentStatus = 'listening';
-  else if (status === 'processing') currentStatus = 'thinking';
-  else if (status === 'playing' || status === 'speaking') currentStatus = 'speaking';
-  else if (status === 'ended') currentStatus = 'ended';
+const OrbMesh = ({ status, analyser }: { status?: DemoStatus | "active", analyser?: AnalyserNode | null }) => {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const materialRef = useRef<THREE.ShaderMaterial>(null);
+  const dataArrayRef = useRef<Uint8Array | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (analyser) {
+      dataArrayRef.current = new Uint8Array(analyser.frequencyBinCount);
+    } else {
+      dataArrayRef.current = null;
+    }
+  }, [analyser]);
 
-    // Initialize WebGL context
-    const renderer = new Renderer({ alpha: true, antialias: true, dpr: 2 });
-    const gl = renderer.gl;
-    containerRef.current.appendChild(gl.canvas);
-    rendererRef.current = renderer;
+  // Smoothed states
+  const amplitudeRef = useRef(0);
+  const timeRef = useRef(0);
 
-    const camera = new Camera(gl, { fov: 45 });
-    camera.position.set(0, 0, 5);
+  const uniforms = useMemo(() => ({
+    uTime: { value: 0 },
+    uAmplitude: { value: 0 },
+    uColorBase: { value: COLORS.brandOrange.clone() },
+    uColorGlow: { value: COLORS.lightOrange.clone() },
+    uColorCore: { value: COLORS.peach.clone() },
+  }), []);
 
-    const scene = new Transform();
-
-    const geometry = new Sphere(gl, {
-      radius: 1.5,
-      widthSegments: 64,
-      heightSegments: 64,
-    });
-
-    const program = new Program(gl, {
-      vertex,
-      fragment,
-      uniforms: {
-        uTime: { value: 0 },
-        uDisplacement: { value: 0.1 },
-        uSpeed: { value: 0.5 },
-        uColorA: { value: [0.3, 0.1, 0.8] }, // Deep purple
-        uColorB: { value: [0.6, 0.2, 1.0] }, // Bright purple
-      },
-      transparent: true,
-      cullFace: null,
-    });
-    programRef.current = program;
-
-    const mesh = new Mesh(gl, { geometry, program });
-    mesh.setParent(scene);
-
-    let lastTime = 0;
-    const update = (time: number) => {
-      const delta = (time - lastTime) * 0.001;
-      lastTime = time;
-
-      if (programRef.current) {
-        programRef.current.uniforms.uTime.value += delta;
-      }
-
-      renderer.render({ scene, camera });
-      rafId.current = requestAnimationFrame(update);
-    };
-
-    rafId.current = requestAnimationFrame(update);
-
-    const resize = () => {
-      if (!containerRef.current || !rendererRef.current) return;
-      const { clientWidth, clientHeight } = containerRef.current;
-      rendererRef.current.setSize(clientWidth, clientHeight);
-      camera.perspective({ aspect: clientWidth / clientHeight });
-    };
+  useFrame((state, delta) => {
+    if (!meshRef.current || !materialRef.current) return;
     
-    window.addEventListener('resize', resize);
-    resize();
+    const target = mapStatus(status);
+    timeRef.current += delta * target.speedMultiplier;
     
-    const container = containerRef.current;
-
-    return () => {
-      window.removeEventListener('resize', resize);
-      cancelAnimationFrame(rafId.current);
-      if (container && gl.canvas.parentNode === container) {
-        container.removeChild(gl.canvas);
+    // Fetch Audio Amplitude
+    let currentAmplitude = 0;
+    if (analyser && dataArrayRef.current) {
+      analyser.getByteFrequencyData(dataArrayRef.current as any);
+      let sum = 0;
+      const maxBin = Math.floor(dataArrayRef.current.length * 0.4); 
+      for (let i = 0; i < maxBin; i++) {
+        sum += dataArrayRef.current[i];
       }
-      
-      if (gl) {
-        const ext = gl.getExtension('WEBGL_lose_context');
-        if (ext) ext.loseContext();
-      }
-    };
-  }, []);
+      currentAmplitude = (sum / maxBin) / 255.0;
+    }
 
-  // Update uniforms based on status
-  useEffect(() => {
-    if (!programRef.current) return;
-    const uniforms = programRef.current.uniforms;
+    // Smooth amplitude transitions for fluid motion
+    amplitudeRef.current = THREE.MathUtils.lerp(amplitudeRef.current, currentAmplitude, 0.1);
+    
+    // Pass uniforms
+    uniforms.uTime.value = timeRef.current;
+    uniforms.uAmplitude.value = amplitudeRef.current;
+    uniforms.uColorBase.value.lerp(target.base, 0.05);
+    uniforms.uColorGlow.value.lerp(target.glow, 0.05);
+    uniforms.uColorCore.value.lerp(target.core, 0.05);
 
-    // Target values based on status
-    const targetColors = {
-      idle: { a: [0.3, 0.3, 0.4], b: [0.5, 0.5, 0.6], d: 0.05, s: 0.2 },
-      ended: { a: [0.2, 0.2, 0.2], b: [0.4, 0.4, 0.4], d: 0.0, s: 0.0 },
-      listening: { a: [0.2, 0.1, 0.7], b: [0.5, 0.3, 1.0], d: 0.15, s: 0.8 },
-      thinking: { a: [0.4, 0.1, 0.8], b: [0.8, 0.2, 1.0], d: 0.25, s: 1.5 },
-      speaking: { a: [0.5, 0.1, 1.0], b: [1.0, 0.4, 1.0], d: 0.4, s: 2.5 },
-    };
+    // Rotate Mesh slowly for parallax volume
+    meshRef.current.rotation.y += delta * 0.1 * target.speedMultiplier;
+    meshRef.current.rotation.x += delta * 0.05 * target.speedMultiplier;
 
-    const target = targetColors[currentStatus as keyof typeof targetColors] || targetColors.idle;
-
-    // Simple tweening for smooth transition
-    const startA = [...uniforms.uColorA.value];
-    const startB = [...uniforms.uColorB.value];
-    const startD = uniforms.uDisplacement.value;
-    const startS = uniforms.uSpeed.value;
-
-    const duration = 500;
-    const startTime = performance.now();
-
-    let tweenRaf: number;
-    const animate = (time: number) => {
-      const elapsed = time - startTime;
-      const progress = Math.min(elapsed / duration, 1.0);
-      const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-
-      uniforms.uColorA.value = startA.map((v, i) => v + (target.a[i] - v) * ease);
-      uniforms.uColorB.value = startB.map((v, i) => v + (target.b[i] - v) * ease);
-      uniforms.uDisplacement.value = startD + (target.d - startD) * ease;
-      uniforms.uSpeed.value = startS + (target.s - startS) * ease;
-
-      if (progress < 1.0) {
-        tweenRaf = requestAnimationFrame(animate);
-      }
-    };
-
-    tweenRaf = requestAnimationFrame(animate);
-
-    return () => cancelAnimationFrame(tweenRaf);
-  }, [currentStatus]);
+    // Slow breathing scale + audio pulse expansion
+    const breathingScale = 1.0 + Math.sin(timeRef.current * 0.5) * 0.05;
+    const pulseScale = target.baseScale * breathingScale + (amplitudeRef.current * 0.25);
+    meshRef.current.scale.lerp(new THREE.Vector3(pulseScale, pulseScale, pulseScale), 0.1);
+  });
 
   return (
-    <div 
-      ref={containerRef} 
-      className={`w-full h-full min-h-[200px] flex items-center justify-center ${className}`} 
-      style={{ touchAction: 'none' }}
-    />
+    <Sphere ref={meshRef} args={[1.5, 128, 128]}>
+      <shaderMaterial
+        ref={materialRef}
+        vertexShader={vertexShader}
+        fragmentShader={fragmentShader}
+        uniforms={uniforms}
+        transparent={true}
+        depthWrite={false}
+        side={THREE.DoubleSide}
+      />
+    </Sphere>
   );
-}
+};
+
+// ============================================================================
+// MAIN EXPORT
+// ============================================================================
+
+export const VoicePoweredOrb = ({ status, analyser, className, enableVoiceControl }: VoiceOrbProps) => {
+  const activeStatus = status || (enableVoiceControl ? 'active' : 'idle');
+
+  return (
+    <div className={cn("relative w-full h-full", className)}>
+      {/* Soft radial background glow (CSS) */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-500/20 via-purple-500/5 to-transparent blur-[64px] rounded-full scale-150 pointer-events-none" />
+      
+      <Canvas camera={{ position: [0, 0, 4.5], fov: 45 }} gl={{ antialias: true, alpha: true }}>
+        {/* NO PHYSICAL LIGHTS. The orb is a fully unlit, self-illuminating plasma shader. */}
+        <OrbMesh status={activeStatus as DemoStatus} analyser={analyser} />
+      </Canvas>
+    </div>
+  );
+};

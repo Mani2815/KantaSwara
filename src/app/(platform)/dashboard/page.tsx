@@ -9,6 +9,7 @@ import {
   AlertCircle, ShieldCheck, PlayCircle, BookOpen,
   Calendar, LineChart, Server, Bell, History
 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -80,7 +81,7 @@ function StatCard({
     <div className="relative bg-[var(--color-bg-surface)] border border-[var(--color-border-default)] shadow-sm rounded-2xl p-5 overflow-hidden transition-all group cursor-default">
       <div className="flex items-start justify-between mb-4">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-[#ff6600] bg-opacity-10`}>
-          <Icon className="w-5 h-5 text-[#ff6600]" />
+          {React.createElement(Icon as any, { className: "w-5 h-5 text-[#ff6600]" })}
         </div>
         {trend && (
           <span className={`flex items-center gap-1 text-xs font-medium ${trendUp ? 'text-emerald-500' : 'text-red-500'}`}>

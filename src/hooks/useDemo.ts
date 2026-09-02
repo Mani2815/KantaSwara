@@ -171,6 +171,10 @@ export function useDemo(callbacks?: DemoCallbacks) {
   const isPlayingQueueRef = useRef(false);
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
 
+  // ── Visualization Refs ────────────────────────────────────────────────────
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const micSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   const update = useCallback((partial: Partial<DemoState>) => {
@@ -224,6 +228,11 @@ export function useDemo(callbacks?: DemoCallbacks) {
       audioContextRef.current = new (window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext })
           .webkitAudioContext)();
+          
+      // Create global analyser for the voice visualizer
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      analyserRef.current.fftSize = 512;
+      analyserRef.current.smoothingTimeConstant = 0.8;
     }
 
     const ctx = audioContextRef.current;
@@ -261,7 +270,17 @@ export function useDemo(callbacks?: DemoCallbacks) {
         const decoded = await ctx.decodeAudioData(audioData.buffer.slice(0));
         const source = ctx.createBufferSource();
         source.buffer = decoded;
-        source.connect(ctx.destination);
+        
+        // Connect to analyser for visualizer, then to destination for speakers
+        if (analyserRef.current) {
+          // If analyser is already connected to destination from a previous run,
+          // we don't strictly need to reconnect it, but doing so is safe.
+          analyserRef.current.connect(ctx.destination);
+          source.connect(analyserRef.current);
+        } else {
+          source.connect(ctx.destination);
+        }
+        
         currentSourceRef.current = source;
 
         await new Promise<void>((resolve) => {
@@ -597,10 +616,16 @@ export function useDemo(callbacks?: DemoCallbacks) {
 
     try {
       // Unlock AudioContext on user gesture
-      ensureAudioContext();
+      const ctx = ensureAudioContext();
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       activeStreamRef.current = stream;
+
+      // Connect mic to analyser (do NOT connect to destination to avoid feedback)
+      if (analyserRef.current) {
+        micSourceRef.current = ctx.createMediaStreamSource(stream);
+        micSourceRef.current.connect(analyserRef.current);
+      }
 
       // Build MediaRecorder options
       const recorderOptions: MediaRecorderOptions = {};
@@ -629,6 +654,11 @@ export function useDemo(callbacks?: DemoCallbacks) {
         // Release mic tracks
         stream.getTracks().forEach((t) => t.stop());
         activeStreamRef.current = null;
+        
+        if (micSourceRef.current) {
+          micSourceRef.current.disconnect();
+          micSourceRef.current = null;
+        }
 
         const audioBlob = new Blob(audioChunksRef.current, {
           type: actualMime,
@@ -789,6 +819,7 @@ export function useDemo(callbacks?: DemoCallbacks) {
 
   return {
     state,
+    getAnalyser: () => analyserRef.current,
     startSession,
     endSession,
     sendTextMessage,
