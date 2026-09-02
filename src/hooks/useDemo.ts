@@ -1,18 +1,23 @@
 // =============================================================================
-// useDemo Hook — Client-side Demo Voice Call Controller
+// useDemo Hook — Real-Time Streaming Voice Demo Controller
 // =============================================================================
-// Phase 2 & 3: Full rewrite with cross-browser support, audio queue,
-// recording limits, session cleanup, and reliability improvements.
+// V2: Complete rewrite for WebSocket + VAD + streaming pipeline.
 //
-// Declaration order:
-//   update → addTranscriptEntry → startTimer/stopTimer → ensureAudioContext
-//   → enqueueAudio → stopListening → endSession → sendTextMessage
-//   → sendAudioMessage → startListening → submitFeedback → reset → dismissError
+// Architecture:
+//   Browser → AudioWorklet → PCM16 → WebSocket → Server Orchestrator
+//   Server → Deepgram STT/LLM/Flux TTS → PCM audio → WebSocket → Browser
+//   Browser → StreamingAudioPlayer → Speaker
+//
+// Preserves the same external interface as the original hook for
+// backward compatibility with the demo page component.
 // =============================================================================
 
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import type { DemoDomain } from '@server/services/demo/domain-personas.config';
+
+export type { DemoDomain };
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -24,9 +29,6 @@ export type DemoStatus =
   | 'playing'
   | 'error'
   | 'ended';
-
-import type { DemoDomain } from '@server/services/demo/domain-personas.config';
-export type { DemoDomain };
 
 export interface TranscriptEntry {
   id: string;
@@ -50,141 +52,62 @@ export interface DemoState {
   error: string | null;
   summary: string | null;
   maxDurationSec: number;
-  /** True when session is 30s from ending — triggers a UI warning */
   timeWarning: boolean;
-  /** Whether voice recording is available in this browser */
   voiceSupported: boolean;
+  /** Live partial transcript (during speech) */
+  partialTranscript: string;
+  /** Live accumulated LLM response (streaming) */
+  streamingResponse: string;
 }
 
-interface DemoCallbacks {
-  onSessionStart?: () => void;
-  onSessionEnd?: (summary: string) => void;
-  onError?: (error: string) => void;
-  onTranscriptUpdate?: (entry: TranscriptEntry) => void;
-}
+// ── Initial state ───────────────────────────────────────────────────────────
 
-const API_BASE = '/api/v1/demo';
+const INITIAL_STATE: DemoState = {
+  status: 'idle',
+  sessionToken: null,
+  sessionId: null,
+  agentName: '',
+  domain: null,
+  transcript: [],
+  isListening: false,
+  isProcessing: false,
+  isPlaying: false,
+  turnCount: 0,
+  elapsedSeconds: 0,
+  error: null,
+  summary: null,
+  maxDurationSec: 300,
+  timeWarning: false,
+  voiceSupported: true,
+  partialTranscript: '',
+  streamingResponse: '',
+};
 
-// ── Constants ───────────────────────────────────────────────────────────────
+// ── Hook ────────────────────────────────────────────────────────────────────
 
-/** Maximum recording duration in ms (60 seconds) */
-const MAX_RECORDING_DURATION_MS = 60_000;
-/** Maximum audio blob size in bytes (5 MB) */
-const MAX_AUDIO_BLOB_SIZE = 5 * 1024 * 1024;
-/** Minimum time between messages in ms (3 seconds) */
-const MESSAGE_THROTTLE_MS = 3_000;
+export function useDemo() {
+  const [state, setState] = useState<DemoState>(INITIAL_STATE);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
-// ── Browser Capability Detection ────────────────────────────────────────────
-
-/**
- * Detect the best supported audio MIME type for MediaRecorder.
- * Falls back to null if no recording is supported (text-only mode).
- */
-function detectSupportedMimeType(): string | null {
-  if (typeof window === 'undefined' || !window.MediaRecorder) return null;
-
-  // Priority order: opus in webm, opus in ogg, mp4 audio, webm default
-  const candidates = [
-    'audio/webm;codecs=opus',
-    'audio/webm',
-    'audio/ogg;codecs=opus',
-    'audio/mp4',
-    'audio/mp4;codecs=aac',
-  ];
-
-  for (const mimeType of candidates) {
-    try {
-      if (MediaRecorder.isTypeSupported(mimeType)) {
-        return mimeType;
-      }
-    } catch {
-      // isTypeSupported might throw in some browsers
-    }
-  }
-
-  // Some browsers (especially iOS Safari) support MediaRecorder
-  // without any specific MIME type — try with empty options
-  try {
-    if (typeof MediaRecorder !== 'undefined') {
-      return ''; // Use browser default
-    }
-  } catch {
-    // MediaRecorder not available
-  }
-
-  return null;
-}
-
-// =============================================================================
-// HOOK
-// =============================================================================
-
-export function useDemo(callbacks?: DemoCallbacks) {
-  // ── Browser capability detection (runs once) ───────────────────────────
-  const supportedMimeRef = useRef<string | null>(null);
-  const [voiceSupported, setVoiceSupported] = useState(true);
-
-  useEffect(() => {
-    const mime = detectSupportedMimeType();
-    supportedMimeRef.current = mime;
-    setVoiceSupported(mime !== null);
-  }, []);
-
-  // ── State ─────────────────────────────────────────────────────────────────
-  const [state, setState] = useState<DemoState>({
-    status: 'idle',
-    sessionToken: null,
-    sessionId: null,
-    agentName: 'Agent',
-    domain: null,
-    transcript: [],
-    isListening: false,
-    isProcessing: false,
-    isPlaying: false,
-    turnCount: 0,
-    elapsedSeconds: 0,
-    error: null,
-    summary: null,
-    maxDurationSec: 300,
-    timeWarning: false,
-    voiceSupported: true,
-  });
-
-  // Keep voiceSupported in sync
-  useEffect(() => {
-    setState((prev) => ({ ...prev, voiceSupported }));
-  }, [voiceSupported]);
-
-  // ── Refs ──────────────────────────────────────────────────────────────────
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const audioContextUnlockedRef = useRef(false);
+  // Refs for persistent objects
+  const wsRef = useRef<WebSocket | null>(null);
+  const audioPlayerRef = useRef<import('@/lib/audio-player').StreamingAudioPlayer | null>(null);
+  const audioPipelineRef = useRef<import('@/lib/audio-pipeline').AudioPipeline | null>(null);
+  const vadRef = useRef<import('@/lib/vad').VADWrapper | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const sessionTokenRef = useRef<string | null>(null);
-  const recordingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastMessageTimeRef = useRef<number>(0);
-  const activeStreamRef = useRef<MediaStream | null>(null);
+  const lastServerSeqRef = useRef(-1);
 
-  // ── Audio Queue Refs ──────────────────────────────────────────────────────
-  const audioQueueRef = useRef<Array<{ base64: string; mimeType: string }>>([]);
-  const isPlayingQueueRef = useRef(false);
-  const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  // ── State updater ──────────────────────────────────────────────────────
 
-  // ── Visualization Refs ────────────────────────────────────────────────────
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const micSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
-  const update = useCallback((partial: Partial<DemoState>) => {
-    setState((prev) => ({ ...prev, ...partial }));
+  const update = useCallback((patch: Partial<DemoState>) => {
+    setState((prev) => ({ ...prev, ...patch }));
   }, []);
 
   const addTranscriptEntry = useCallback(
     (speaker: 'user' | 'agent', text: string) => {
       const entry: TranscriptEntry = {
-        id: `${speaker}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         speaker,
         text,
         timestamp: new Date(),
@@ -193,20 +116,36 @@ export function useDemo(callbacks?: DemoCallbacks) {
         ...prev,
         transcript: [...prev.transcript, entry],
       }));
-      callbacks?.onTranscriptUpdate?.(entry);
-      return entry;
     },
-    [callbacks]
+    []
   );
 
-  // ── Start Timer ───────────────────────────────────────────────────────────
+  // Update the last agent transcript entry (for streaming response)
+  const updateLastAgentEntry = useCallback((text: string) => {
+    setState((prev) => {
+      const entries = [...prev.transcript];
+      const lastIdx = entries.length - 1;
+      if (lastIdx >= 0 && entries[lastIdx].speaker === 'agent') {
+        entries[lastIdx] = { ...entries[lastIdx], text };
+      }
+      return { ...prev, transcript: entries };
+    });
+  }, []);
+
+  // ── Timer ──────────────────────────────────────────────────────────────
+
   const startTimer = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
+    if (timerRef.current) return;
     timerRef.current = setInterval(() => {
-      setState((prev) => ({
-        ...prev,
-        elapsedSeconds: prev.elapsedSeconds + 1,
-      }));
+      setState((prev) => {
+        const next = prev.elapsedSeconds + 1;
+        const remaining = prev.maxDurationSec - next;
+        return {
+          ...prev,
+          elapsedSeconds: next,
+          timeWarning: remaining <= 30 && remaining > 0,
+        };
+      });
     }, 1000);
   }, []);
 
@@ -217,609 +156,379 @@ export function useDemo(callbacks?: DemoCallbacks) {
     }
   }, []);
 
-  // ── AudioContext Management ───────────────────────────────────────────────
+  // ── WebSocket message handler ──────────────────────────────────────────
 
-  /**
-   * Ensures AudioContext is created and unlocked (especially for iOS Safari).
-   * Must be called from a user gesture handler.
-   */
-  const ensureAudioContext = useCallback((): AudioContext => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext })
-          .webkitAudioContext)();
-          
-      // Create global analyser for the voice visualizer
-      analyserRef.current = audioContextRef.current.createAnalyser();
-      analyserRef.current.fftSize = 512;
-      analyserRef.current.smoothingTimeConstant = 0.8;
-    }
-
-    const ctx = audioContextRef.current;
-
-    // iOS Safari suspends AudioContext until a user gesture resumes it
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {
-        // Non-fatal — will retry on next interaction
-      });
-    }
-
-    audioContextUnlockedRef.current = true;
-    return ctx;
-  }, []);
-
-  // ── Audio Queue ───────────────────────────────────────────────────────────
-
-  /**
-   * Process the audio queue: plays items sequentially, one at a time.
-   */
-  const processAudioQueue = useCallback(async () => {
-    if (isPlayingQueueRef.current) return;
-    isPlayingQueueRef.current = true;
-
-    while (audioQueueRef.current.length > 0) {
-      const item = audioQueueRef.current.shift()!;
-      update({ isPlaying: true });
-
-      try {
-        const ctx = ensureAudioContext();
-        const audioData = Uint8Array.from(atob(item.base64), (c) =>
-          c.charCodeAt(0)
-        );
-
-        const decoded = await ctx.decodeAudioData(audioData.buffer.slice(0));
-        const source = ctx.createBufferSource();
-        source.buffer = decoded;
-        
-        // Connect to analyser for visualizer, then to destination for speakers
-        if (analyserRef.current) {
-          // If analyser is already connected to destination from a previous run,
-          // we don't strictly need to reconnect it, but doing so is safe.
-          analyserRef.current.connect(ctx.destination);
-          source.connect(analyserRef.current);
-        } else {
-          source.connect(ctx.destination);
-        }
-        
-        currentSourceRef.current = source;
-
-        await new Promise<void>((resolve) => {
-          source.onended = () => {
-            currentSourceRef.current = null;
-            resolve();
-          };
-          source.start(0);
-        });
-      } catch (err) {
-        console.error('[useDemo] Audio playback error:', err);
-        currentSourceRef.current = null;
+  const handleServerMessage = useCallback(
+    (msg: Record<string, unknown>) => {
+      // Track sequence for reconnect
+      if (typeof msg.seq === 'number') {
+        lastServerSeqRef.current = msg.seq as number;
       }
-    }
 
-    isPlayingQueueRef.current = false;
-    update({ isPlaying: false });
-  }, [update, ensureAudioContext]);
+      switch (msg.type) {
+        case 'session_created':
+          update({
+            status: 'active',
+            sessionId: msg.sessionId as string,
+            agentName: msg.agentName as string,
+            domain: msg.domain as DemoDomain,
+            isListening: true,
+          });
+          addTranscriptEntry('agent', msg.greeting as string);
+          startTimer();
+          break;
 
-  /**
-   * Enqueue audio for sequential playback.
-   */
-  const enqueueAudio = useCallback(
-    (base64Audio: string, mimeType: string = 'audio/mpeg') => {
-      audioQueueRef.current.push({ base64: base64Audio, mimeType });
-      processAudioQueue();
+        case 'transcript_partial':
+          update({ partialTranscript: msg.text as string });
+          break;
+
+        case 'transcript_final':
+          update({ partialTranscript: '' });
+          // Add user message to transcript (if not already there)
+          addTranscriptEntry('user', msg.text as string);
+          break;
+
+        case 'thinking':
+          update({ status: 'processing', isProcessing: true, streamingResponse: '' });
+          // Create a placeholder agent entry for streaming
+          addTranscriptEntry('agent', '...');
+          break;
+
+        case 'llm_token':
+          update({
+            streamingResponse: msg.accumulated as string,
+            status: 'processing',
+          });
+          // Update the last agent transcript entry with accumulated text
+          updateLastAgentEntry(msg.accumulated as string);
+          break;
+
+        case 'turn_complete':
+          update({
+            status: 'active',
+            isProcessing: false,
+            isPlaying: false,
+            isListening: true,
+            streamingResponse: '',
+            turnCount: msg.turnCount as number,
+          });
+          break;
+
+        case 'interrupted':
+          // Flush audio immediately on barge-in
+          audioPlayerRef.current?.flush();
+          update({
+            status: 'active',
+            isProcessing: false,
+            isPlaying: false,
+            isListening: true,
+            streamingResponse: '',
+          });
+          break;
+
+        case 'error':
+          console.error(`[useDemo] Server error: ${msg.code} - ${msg.message}`);
+          update({ error: `${msg.code}: ${msg.message}`, status: 'error' });
+          break;
+
+        case 'session_ended':
+          stopTimer();
+          update({
+            status: 'ended',
+            isListening: false,
+            isProcessing: false,
+            isPlaying: false,
+            turnCount: (msg.turnCount as number) ?? stateRef.current.turnCount,
+          });
+          break;
+
+        case 'resumed':
+          console.log(`[useDemo] Session resumed from seq ${msg.fromSeq}`);
+          update({ status: 'active', isListening: true });
+          break;
+      }
     },
-    [processAudioQueue]
+    [update, addTranscriptEntry, updateLastAgentEntry, startTimer, stopTimer]
   );
 
-  /**
-   * Stop currently playing audio and clear the queue.
-   */
-  const stopAudioPlayback = useCallback(() => {
-    audioQueueRef.current = [];
-    if (currentSourceRef.current) {
-      try {
-        currentSourceRef.current.stop();
-      } catch {
-        // Already stopped
-      }
-      currentSourceRef.current = null;
+  // ── Handle binary audio from server (TTS output) ──────────────────────
+
+  const handleBinaryAudio = useCallback((data: ArrayBuffer) => {
+    if (!audioPlayerRef.current) return;
+
+    // Convert ArrayBuffer to Int16Array (PCM16 at 24kHz)
+    const pcm16 = new Int16Array(data);
+    audioPlayerRef.current.enqueue(pcm16);
+
+    // Update playing state
+    if (!stateRef.current.isPlaying) {
+      update({ isPlaying: true, status: 'playing' });
     }
-    isPlayingQueueRef.current = false;
-    update({ isPlaying: false });
   }, [update]);
 
-  // ── Message Throttle ──────────────────────────────────────────────────────
+  // ── Start session ──────────────────────────────────────────────────────
 
-  const checkThrottle = useCallback((): boolean => {
-    const now = Date.now();
-    const elapsed = now - lastMessageTimeRef.current;
-    if (elapsed < MESSAGE_THROTTLE_MS) {
-      const waitSec = Math.ceil((MESSAGE_THROTTLE_MS - elapsed) / 1000);
-      update({
-        error: `Please wait ${waitSec} second${waitSec > 1 ? 's' : ''} before sending another message.`,
-      });
-      return false;
-    }
-    lastMessageTimeRef.current = now;
-    return true;
-  }, [update]);
-
-  // ── Start Session ─────────────────────────────────────────────────────────
   const startSession = useCallback(
     async (domain: DemoDomain) => {
+      update({ status: 'connecting' });
+
       try {
-        update({ status: 'connecting', error: null });
+        // Dynamically import client-side modules to avoid SSR issues
+        const [
+          { StreamingAudioPlayer },
+          { AudioPipeline },
+          { VADWrapper },
+        ] = await Promise.all([
+          import('@/lib/audio-player'),
+          import('@/lib/audio-pipeline'),
+          import('@/lib/vad'),
+        ]);
 
-        // Unlock AudioContext from user gesture (critical for iOS)
-        ensureAudioContext();
+        // 1. Initialize audio player (24kHz for Flux TTS output)
+        const player = new StreamingAudioPlayer();
+        await player.init();
+        audioPlayerRef.current = player;
 
-        const res = await fetch(`${API_BASE}/start`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ domain }),
+        // 2. Build WebSocket URL
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/api/v1/demo/ws`;
+
+        // 3. Connect WebSocket
+        const ws = new WebSocket(wsUrl);
+        ws.binaryType = 'arraybuffer';
+        wsRef.current = ws;
+
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('WebSocket connection timeout')), 10000);
+
+          ws.onopen = () => {
+            clearTimeout(timeout);
+            resolve();
+          };
+
+          ws.onerror = () => {
+            clearTimeout(timeout);
+            reject(new Error('WebSocket connection failed'));
+          };
         });
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.message || 'Failed to start demo');
+
+        // 4. Set up WebSocket message handler
+        ws.onmessage = (event: MessageEvent) => {
+          if (event.data instanceof ArrayBuffer) {
+            handleBinaryAudio(event.data);
+          } else {
+            try {
+              const msg = JSON.parse(event.data as string);
+              handleServerMessage(msg);
+            } catch (err) {
+              console.error('[useDemo] Failed to parse message:', err);
+            }
+          }
+        };
+
+        ws.onclose = () => {
+          console.log('[useDemo] WebSocket closed');
+          // TODO: Implement reconnection with lastServerSeqRef.current
+        };
+
+        ws.onerror = (e) => {
+          console.error('[useDemo] WebSocket error:', e);
+          update({ error: 'Connection error', status: 'error' });
+        };
+
+        // 5. Initialize VAD
+        let vadStarted = false;
+        try {
+          const vad = new VADWrapper({
+            onSpeechStart: () => {
+              // Send speech_start to server (triggers interrupt if agent is speaking)
+              if (wsRef.current?.readyState === WebSocket.OPEN) {
+                wsRef.current.send(JSON.stringify({ type: 'vad_speech_start' }));
+              }
+              // Flush local audio playback immediately for barge-in
+              audioPlayerRef.current?.flush();
+              update({ isListening: true, isPlaying: false });
+            },
+            onSpeechEnd: () => {
+              // Send speech_end to server
+              if (wsRef.current?.readyState === WebSocket.OPEN) {
+                wsRef.current.send(JSON.stringify({ type: 'vad_speech_end' }));
+              }
+            },
+            onFrameProcessed: () => {
+              // Could use for waveform — currently handled by AudioPipeline
+            },
+          });
+          await vad.start();
+          vadRef.current = vad;
+          vadStarted = true;
+        } catch (vadErr) {
+          console.warn('[useDemo] VAD init failed, falling back to text-only:', vadErr);
+          update({ voiceSupported: false });
         }
 
-        const data = await res.json();
-
-        sessionTokenRef.current = data.sessionToken;
-        lastMessageTimeRef.current = 0; // Reset throttle
-        update({
-          status: 'active',
-          sessionToken: data.sessionToken,
-          sessionId: data.sessionId,
-          agentName: data.agentName || 'Agent',
-          domain: data.domain || domain,
-          maxDurationSec: data.maxDurationSec || 300,
-          transcript: [],
-          turnCount: 0,
-          elapsedSeconds: 0,
-          summary: null,
-          timeWarning: false,
-        });
-
-        // Add greeting to transcript
-        addTranscriptEntry('agent', data.greeting);
-
-        // Play greeting audio via queue
-        if (data.greetingAudio) {
-          enqueueAudio(data.greetingAudio);
+        // 6. Initialize audio pipeline (only if VAD succeeded)
+        if (vadStarted) {
+          try {
+            const pipeline = new AudioPipeline({
+              onPCMFrame: (pcm16: Int16Array) => {
+                // Send raw PCM16 audio frames to server for STT
+                if (wsRef.current?.readyState === WebSocket.OPEN) {
+                  wsRef.current.send(pcm16.buffer);
+                }
+              },
+              onAudioLevel: () => {
+                // Audio level for waveform — handled by VAD/analyser
+              },
+              onError: (err) => {
+                console.error('[useDemo] Audio pipeline error:', err);
+              },
+            });
+            await pipeline.start();
+            audioPipelineRef.current = pipeline;
+          } catch (pipelineErr) {
+            console.warn('[useDemo] Audio pipeline failed:', pipelineErr);
+            update({ voiceSupported: false });
+          }
         }
 
-        // Start timer
-        startTimer();
+        // 7. Send start message
+        ws.send(JSON.stringify({ type: 'start', domain }));
 
-        callbacks?.onSessionStart?.();
-      } catch (err: unknown) {
-        const message =
-          err instanceof Error
-            ? err.message
-            : 'Failed to start demo session';
-        update({
-          status: 'error',
-          error: message,
-        });
-        callbacks?.onError?.(message);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to start session';
+        console.error('[useDemo] Start error:', msg);
+        update({ error: msg, status: 'error' });
       }
     },
-    [update, addTranscriptEntry, enqueueAudio, startTimer, ensureAudioContext, callbacks]
+    [update, handleServerMessage, handleBinaryAudio]
   );
 
-  // ── Stop Listening ────────────────────────────────────────────────────────
+  // ── End session ────────────────────────────────────────────────────────
+
+  const endSession = useCallback(() => {
+    // Send end message to server
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'end' }));
+    }
+
+    // Cleanup
+    stopTimer();
+    audioPipelineRef.current?.stop();
+    audioPipelineRef.current = null;
+    vadRef.current?.destroy();
+    vadRef.current = null;
+    audioPlayerRef.current?.destroy();
+    audioPlayerRef.current = null;
+    wsRef.current?.close();
+    wsRef.current = null;
+
+    update({
+      status: 'ended',
+      isListening: false,
+      isProcessing: false,
+      isPlaying: false,
+    });
+  }, [update, stopTimer]);
+
+  // ── Send text message (keyboard input) ─────────────────────────────────
+
+  const sendTextMessage = useCallback(
+    async (text: string) => {
+      if (!text.trim() || !wsRef.current) return;
+
+      addTranscriptEntry('user', text.trim());
+      update({ isProcessing: true, status: 'processing' });
+
+      wsRef.current.send(
+        JSON.stringify({ type: 'text', text: text.trim() })
+      );
+    },
+    [update, addTranscriptEntry]
+  );
+
+  // ── Voice controls (backward compat — now continuous via VAD) ──────────
+
+  const startListening = useCallback(() => {
+    vadRef.current?.resume();
+    update({ isListening: true });
+  }, [update]);
+
   const stopListening = useCallback(() => {
-    // Clear recording duration timer
-    if (recordingTimerRef.current) {
-      clearTimeout(recordingTimerRef.current);
-      recordingTimerRef.current = null;
-    }
-
-    if (
-      mediaRecorderRef.current &&
-      mediaRecorderRef.current.state !== 'inactive'
-    ) {
-      mediaRecorderRef.current.stop();
-    }
-
-    // Release active mic stream
-    if (activeStreamRef.current) {
-      activeStreamRef.current.getTracks().forEach((t) => t.stop());
-      activeStreamRef.current = null;
-    }
-
+    vadRef.current?.pause();
     update({ isListening: false });
   }, [update]);
 
-  // ── End Session ───────────────────────────────────────────────────────────
-  const endSession = useCallback(async () => {
-    if (!sessionTokenRef.current) return;
+  const stopAudioPlayback = useCallback(() => {
+    audioPlayerRef.current?.flush();
+    update({ isPlaying: false });
 
-    try {
-      stopTimer();
-      stopListening();
-      stopAudioPlayback();
-
-      update({ status: 'ended', isListening: false, isProcessing: false });
-
-      const res = await fetch(`${API_BASE}/end`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionToken: sessionTokenRef.current }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        update({ summary: data.summary });
-        callbacks?.onSessionEnd?.(data.summary);
-      }
-    } catch (err) {
-      console.error('[useDemo] End session error:', err);
+    // Tell server to interrupt
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'interrupt' }));
     }
-  }, [update, stopTimer, stopListening, stopAudioPlayback, callbacks]);
+  }, [update]);
 
-  // ── Send Text Message ─────────────────────────────────────────────────────
-  const sendTextMessage = useCallback(
-    async (text: string) => {
-      if (!sessionTokenRef.current || !text.trim()) return;
-      if (!checkThrottle()) return;
+  // ── Feedback ───────────────────────────────────────────────────────────
 
-      try {
-        update({ isProcessing: true, status: 'processing', error: null });
-        addTranscriptEntry('user', text);
-
-        const res = await fetch(`${API_BASE}/message`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionToken: sessionTokenRef.current,
-            text,
-          }),
-        });
-
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.message || 'Failed to process message');
-        }
-
-        const data = await res.json();
-
-        addTranscriptEntry('agent', data.text);
-        update({
-          isProcessing: false,
-          status: 'active',
-          turnCount: data.turnCount,
-          timeWarning: data.shouldEnd && data.endReason === 'time_warning',
-        });
-
-        // Enqueue audio response (plays sequentially)
-        if (data.audio) {
-          enqueueAudio(data.audio, data.audioMimeType);
-        }
-
-        // Auto-end if session is truly over (not just a time warning)
-        if (data.shouldEnd && data.endReason !== 'time_warning') {
-          await endSession();
-        }
-      } catch (err: unknown) {
-        const message =
-          err instanceof Error ? err.message : 'Failed to send message';
-        update({
-          isProcessing: false,
-          status: 'active',
-          error: message,
-        });
-        callbacks?.onError?.(message);
-      }
-    },
-    [update, addTranscriptEntry, enqueueAudio, endSession, checkThrottle, callbacks]
-  );
-
-  // ── Send Audio Message ────────────────────────────────────────────────────
-  const sendAudioMessage = useCallback(
-    async (audioBlob: Blob) => {
-      if (!sessionTokenRef.current) return;
-      if (!checkThrottle()) return;
-
-      // ── Recording size limit ──────────────────────────────────────────
-      if (audioBlob.size > MAX_AUDIO_BLOB_SIZE) {
-        update({
-          error: `Recording too large (${(audioBlob.size / 1024 / 1024).toFixed(1)}MB). Max ${MAX_AUDIO_BLOB_SIZE / 1024 / 1024}MB. Try a shorter message.`,
-        });
-        return;
-      }
-
-      try {
-        update({
-          isProcessing: true,
-          status: 'processing',
-          isListening: false,
-          error: null,
-        });
-
-        // Convert blob to base64
-        const arrayBuffer = await audioBlob.arrayBuffer();
-        const uint8 = new Uint8Array(arrayBuffer);
-
-        // btoa with Uint8Array — handle large buffers in chunks
-        let binary = '';
-        const chunkSize = 8192;
-        for (let i = 0; i < uint8.length; i += chunkSize) {
-          const chunk = uint8.subarray(i, i + chunkSize);
-          binary += String.fromCharCode(...chunk);
-        }
-        const base64 = btoa(binary);
-
-        const res = await fetch(`${API_BASE}/message`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionToken: sessionTokenRef.current,
-            audio: base64,
-            audioMimeType: audioBlob.type || supportedMimeRef.current || 'audio/webm',
-          }),
-        });
-
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.message || 'Failed to process audio');
-        }
-
-        const data = await res.json();
-
-        // Show actual transcribed user text from the server
-        if (data.userText) {
-          addTranscriptEntry('user', data.userText);
-        }
-        addTranscriptEntry('agent', data.text);
-        update({
-          isProcessing: false,
-          status: 'active',
-          turnCount: data.turnCount,
-          timeWarning: data.shouldEnd && data.endReason === 'time_warning',
-        });
-
-        // Enqueue audio for sequential playback
-        if (data.audio) {
-          enqueueAudio(data.audio, data.audioMimeType);
-        }
-
-        // Auto-end if session is truly over (not just a time warning)
-        if (data.shouldEnd && data.endReason !== 'time_warning') {
-          await endSession();
-        }
-      } catch (err: unknown) {
-        const message =
-          err instanceof Error ? err.message : 'Failed to process audio';
-        update({
-          isProcessing: false,
-          status: 'active',
-          error: message,
-        });
-        callbacks?.onError?.(message);
-      }
-    },
-    [update, addTranscriptEntry, enqueueAudio, endSession, checkThrottle, callbacks]
-  );
-
-  // ── Microphone Control ────────────────────────────────────────────────────
-  const startListening = useCallback(async () => {
-    const mimeType = supportedMimeRef.current;
-    if (mimeType === null) {
-      update({
-        error:
-          'Voice recording is not supported in your browser. Please use text input instead.',
-      });
-      return;
-    }
-
-    try {
-      // Unlock AudioContext on user gesture
-      const ctx = ensureAudioContext();
-
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      activeStreamRef.current = stream;
-
-      // Connect mic to analyser (do NOT connect to destination to avoid feedback)
-      if (analyserRef.current) {
-        micSourceRef.current = ctx.createMediaStreamSource(stream);
-        micSourceRef.current.connect(analyserRef.current);
-      }
-
-      // Build MediaRecorder options
-      const recorderOptions: MediaRecorderOptions = {};
-      if (mimeType) {
-        recorderOptions.mimeType = mimeType;
-      }
-
-      const mediaRecorder = new MediaRecorder(stream, recorderOptions);
-      const actualMime = mediaRecorder.mimeType || mimeType || 'audio/webm';
-
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          audioChunksRef.current.push(e.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        // Clear recording timer
-        if (recordingTimerRef.current) {
-          clearTimeout(recordingTimerRef.current);
-          recordingTimerRef.current = null;
-        }
-
-        // Release mic tracks
-        stream.getTracks().forEach((t) => t.stop());
-        activeStreamRef.current = null;
-        
-        if (micSourceRef.current) {
-          micSourceRef.current.disconnect();
-          micSourceRef.current = null;
-        }
-
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: actualMime,
-        });
-
-        if (audioBlob.size > 0) {
-          await sendAudioMessage(audioBlob);
-        }
-      };
-
-      mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start();
-      update({ isListening: true, error: null });
-
-      // ── Auto-stop recording after max duration ──────────────────────
-      recordingTimerRef.current = setTimeout(() => {
-        if (
-          mediaRecorderRef.current &&
-          mediaRecorderRef.current.state !== 'inactive'
-        ) {
-          update({
-            error: `Recording stopped — maximum ${MAX_RECORDING_DURATION_MS / 1000}s reached. Your audio has been sent.`,
-          });
-          mediaRecorderRef.current.stop();
-        }
-      }, MAX_RECORDING_DURATION_MS);
-    } catch (err: unknown) {
-      const error = err instanceof Error ? err : new Error('Unknown error');
-      let message: string;
-
-      if (error.name === 'NotAllowedError') {
-        message =
-          'Microphone access denied. Please allow microphone access in your browser settings to use voice mode.';
-      } else if (error.name === 'NotFoundError') {
-        message =
-          'No microphone found. Please connect a microphone or switch to text mode.';
-      } else if (error.name === 'NotReadableError') {
-        message =
-          'Your microphone is in use by another application. Close it and try again.';
-      } else {
-        message = 'Failed to access microphone. Please try text input instead.';
-      }
-
-      update({ error: message, isListening: false });
-      callbacks?.onError?.(message);
-    }
-  }, [update, sendAudioMessage, ensureAudioContext, callbacks]);
-
-  // ── Submit Feedback ───────────────────────────────────────────────────────
   const submitFeedback = useCallback(
-    async (rating: number, feedback?: string) => {
-      if (!sessionTokenRef.current) return;
+    async (rating: number, comment?: string) => {
+      if (!stateRef.current.sessionId) return;
 
       try {
-        await fetch(`${API_BASE}/feedback`, {
+        await fetch('/api/v1/demo/feedback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            sessionToken: sessionTokenRef.current,
+            sessionId: stateRef.current.sessionId,
             rating,
-            feedback,
+            comment,
           }),
         });
-      } catch {
-        // Non-fatal
+      } catch (err) {
+        console.error('[useDemo] Feedback submit error:', err);
       }
     },
     []
   );
 
-  // ── Reset ─────────────────────────────────────────────────────────────────
+  // ── Error handling ─────────────────────────────────────────────────────
+
+  const dismissError = useCallback(() => {
+    update({ error: null, status: stateRef.current.sessionId ? 'active' : 'idle' });
+  }, [update]);
+
+  // ── Reset ──────────────────────────────────────────────────────────────
+
   const reset = useCallback(() => {
-    // Clean up all resources
-    stopTimer();
-    stopListening();
-    stopAudioPlayback();
+    endSession();
+    setState(INITIAL_STATE);
+    lastServerSeqRef.current = -1;
+  }, [endSession]);
 
-    // Clear recording timer
-    if (recordingTimerRef.current) {
-      clearTimeout(recordingTimerRef.current);
-      recordingTimerRef.current = null;
-    }
+  // ── Analyser (for waveform visualization — backward compat) ────────────
 
-    // Close AudioContext
-    if (audioContextRef.current) {
-      audioContextRef.current.close().catch(() => {});
-      audioContextRef.current = null;
-      audioContextUnlockedRef.current = false;
-    }
-
-    sessionTokenRef.current = null;
-    lastMessageTimeRef.current = 0;
-
-    setState({
-      status: 'idle',
-      sessionToken: null,
-      sessionId: null,
-      agentName: 'Agent',
-      domain: null,
-      transcript: [],
-      isListening: false,
-      isProcessing: false,
-      isPlaying: false,
-      turnCount: 0,
-      elapsedSeconds: 0,
-      error: null,
-      summary: null,
-      maxDurationSec: 300,
-      timeWarning: false,
-      voiceSupported: voiceSupported,
-    });
-  }, [stopTimer, stopListening, stopAudioPlayback, voiceSupported]);
-
-  // ── Cleanup on unmount ────────────────────────────────────────────────────
-  useEffect(() => {
-    return () => {
-      // Stop all timers
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (recordingTimerRef.current) clearTimeout(recordingTimerRef.current);
-
-      // Stop media
-      if (
-        mediaRecorderRef.current &&
-        mediaRecorderRef.current.state !== 'inactive'
-      ) {
-        try {
-          mediaRecorderRef.current.stop();
-        } catch {
-          /* already stopped */
-        }
-      }
-
-      // Release mic
-      if (activeStreamRef.current) {
-        activeStreamRef.current.getTracks().forEach((t) => t.stop());
-      }
-
-      // Stop audio playback
-      if (currentSourceRef.current) {
-        try {
-          currentSourceRef.current.stop();
-        } catch {
-          /* already stopped */
-        }
-      }
-
-      // Close AudioContext
-      if (audioContextRef.current) {
-        audioContextRef.current.close().catch(() => {});
-      }
-    };
+  const getAnalyser = useCallback(() => {
+    // The old hook returned a Web Audio AnalyserNode.
+    // In the new pipeline, VAD handles its own microphone.
+    // Return null — the demo page shows VoicePoweredOrb instead.
+    return null;
   }, []);
 
-  // ── Dismiss Error ──────────────────────────────────────────────────────────
-  const dismissError = useCallback(() => {
-    update({ error: null });
-  }, [update]);
+  // ── Cleanup on unmount ─────────────────────────────────────────────────
+
+  useEffect(() => {
+    return () => {
+      stopTimer();
+      audioPipelineRef.current?.stop();
+      vadRef.current?.destroy();
+      audioPlayerRef.current?.destroy();
+      wsRef.current?.close();
+    };
+  }, [stopTimer]);
 
   return {
     state,
-    getAnalyser: () => analyserRef.current,
     startSession,
     endSession,
     sendTextMessage,
@@ -829,5 +538,6 @@ export function useDemo(callbacks?: DemoCallbacks) {
     submitFeedback,
     dismissError,
     reset,
+    getAnalyser,
   };
 }

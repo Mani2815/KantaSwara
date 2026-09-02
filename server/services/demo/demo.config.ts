@@ -52,6 +52,26 @@ export const DEMO_AGENT_CONFIG = {
     maxContextMessages: 20,
   },
 
+  // ── Streaming pipeline ──────────────────────────────────────────────────
+  streaming: {
+    /** STT input sample rate (Deepgram nova-2 optimal) */
+    sttSampleRate: 16000,
+    /** TTS output sample rate (Flux, higher quality) */
+    ttsSampleRate: 24000,
+    /** LLM → Flux buffer size in chars before sending (backpressure, not segmentation) */
+    llmBufferChars: 20,
+    /** Max wait after VAD silence + STT final before forcing LLM trigger */
+    maxEndpointWaitMs: 700,
+    /** Jitter buffer duration for audio playback (seconds) */
+    jitterBufferSec: 0.08,
+    /** WebSocket reconnect max retries */
+    reconnectMaxRetries: 10,
+    /** WebSocket reconnect initial backoff (ms) */
+    reconnectInitialBackoffMs: 200,
+    /** WebSocket reconnect max backoff (ms) */
+    reconnectMaxBackoffMs: 3000,
+  },
+
   // ── Greeting ──────────────────────────────────────────────────────────────
   greeting: `Hi! I'm Rani from KantaSwara. I'm an AI voice agent — the same kind of intelligent assistant we build for businesses like yours. Ask me anything about our platform, or let me show you what an AI-powered customer interaction feels like. How can I help you today?`,
 
