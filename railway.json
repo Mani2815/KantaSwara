@@ -3,7 +3,13 @@
   "build": {
     "builder": "NIXPACKS",
     "buildCommand": "npm install",
-    "watchPatterns": ["server/**", "package.json", "tsconfig.json"]
+    "watchPatterns": [
+      "server/**",
+      "package.json",
+      "package-lock.json",
+      "tsconfig.json",
+      "nixpacks.toml"
+    ]
   },
   "deploy": {
     "startCommand": "npm run start:ws",
