@@ -284,13 +284,13 @@ const OrbMesh = ({ status, analyser }: { status?: DemoStatus | "active", analyse
 
     // Smooth amplitude transitions for fluid motion
     amplitudeRef.current = THREE.MathUtils.lerp(amplitudeRef.current, currentAmplitude, 0.1);
-    
-    // Pass uniforms
-    uniforms.uTime.value = timeRef.current;
-    uniforms.uAmplitude.value = amplitudeRef.current;
-    uniforms.uColorBase.value.lerp(target.base, 0.05);
-    uniforms.uColorGlow.value.lerp(target.glow, 0.05);
-    uniforms.uColorCore.value.lerp(target.core, 0.05);
+    // Pass uniforms directly via material to satisfy strict ESLint rules
+    const mat = materialRef.current;
+    mat.uniforms.uTime.value = timeRef.current;
+    mat.uniforms.uAmplitude.value = amplitudeRef.current;
+    mat.uniforms.uColorBase.value.lerp(target.base, 0.05);
+    mat.uniforms.uColorGlow.value.lerp(target.glow, 0.05);
+    mat.uniforms.uColorCore.value.lerp(target.core, 0.05);
 
     // Rotate Mesh slowly for parallax volume
     meshRef.current.rotation.y += delta * 0.1 * target.speedMultiplier;
