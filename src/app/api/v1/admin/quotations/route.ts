@@ -18,24 +18,29 @@ async function getEmployeeFromRequest(req: NextRequest) {
 
 // GET /api/v1/admin/quotations — List all quotations
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const status = searchParams.get('status') || undefined;
-  const orgId = searchParams.get('orgId') || undefined;
+  try {
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get('status') || undefined;
+    const orgId = searchParams.get('orgId') || undefined;
 
-  const quotations = await prisma.quotation.findMany({
-    where: {
-      ...(status && { status: status as any }),
-      ...(orgId && { organizationId: orgId }),
-    },
-    include: {
-      organization: { select: { name: true, slug: true } },
-      plan: { select: { displayName: true } },
-      items: true,
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+    const quotations = await prisma.quotation.findMany({
+      where: {
+        ...(status && { status: status as any }),
+        ...(orgId && { organizationId: orgId }),
+      },
+      include: {
+        organization: { select: { name: true, slug: true } },
+        plan: { select: { displayName: true } },
+        items: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
-  return NextResponse.json({ data: quotations });
+    return NextResponse.json({ data: quotations });
+  } catch (error) {
+    console.error('[GET /admin/quotations]', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
 }
 
 // POST /api/v1/admin/quotations — Create a new quotation

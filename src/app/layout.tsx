@@ -17,6 +17,9 @@ export const metadata: Metadata = {
     'AI Customer Support',
     'Voice Workflow Builder',
   ],
+  icons: {
+    icon: '/images/kantaswara-favicon.svg',
+  },
 };
 
 import { Toaster } from 'sonner';

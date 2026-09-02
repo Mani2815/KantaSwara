@@ -75,11 +75,28 @@ export async function disconnectRedis(): Promise<void> {
 
 /**
  * Check if Redis is connected and responsive.
+ * Implements a strict timeout to prevent indefinite hanging
+ * caused by BullMQ's maxRetriesPerRequest: null requirement.
  */
 export async function isRedisHealthy(): Promise<boolean> {
   try {
     const client = getRedisClient();
-    const pong = await client.ping();
+    
+    // If client is actively reconnecting or closed, don't wait for ping
+    if (client.status === 'reconnecting' || client.status === 'close' || client.status === 'wait') {
+      // If we've never connected, status is 'wait'. Let's give it a short attempt.
+      if (client.status !== 'wait') {
+        return false;
+      }
+    }
+
+    // Ping with a 1-second timeout
+    const pong = await Promise.race([
+      client.ping(),
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Redis ping timeout')), 1000)
+      )
+    ]);
     return pong === 'PONG';
   } catch {
     return false;

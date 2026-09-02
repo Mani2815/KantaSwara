@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -55,15 +55,33 @@ function GlassFilter() {
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+  const [isScrollingUp, setIsScrollingUp] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(NAV_LINKS[0].label);
   const router = useRouter();
+  const lastScrollY = useRef(0);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
+    if (typeof window === 'undefined') return;
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      if (currentScrollY > lastScrollY.current && currentScrollY > 20) {
+        setIsScrollingUp(false);
+      } else if (currentScrollY < lastScrollY.current) {
+        setIsScrollingUp(true);
+      }
+      
+      setScrolled(currentScrollY > 20);
+      lastScrollY.current = currentScrollY;
+    };
+
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const showTopBar = scrolled && isScrollingUp;
 
   return (
     <>
@@ -71,7 +89,7 @@ export function Navbar() {
       <div 
         className={cn(
           "hidden md:flex w-full bg-[#111111] border-b border-[#222222] text-[13px] font-medium text-gray-400 py-1.5 px-8 justify-end items-center gap-6 fixed top-0 left-0 right-0 z-[9999] h-[32px] transition-transform duration-300", 
-          scrolled && "-translate-y-full"
+          !showTopBar && "-translate-y-full"
         )}
       >
         <Link href="/docs" className="text-[#ff5500] hover:text-[#ff7733] transition-colors">Docs</Link>
@@ -125,7 +143,11 @@ export function Navbar() {
         </div>
       </div>
 
-      <header className={cn(styles.navbar, scrolled && styles['navbar--scrolled'])}>
+      <header className={cn(
+        styles.navbar, 
+        scrolled && styles['navbar--scrolled'],
+        !showTopBar && styles['navbar--hide-top-bar']
+      )}>
         <div className={styles.navbar__inner}>
           <div className={styles['navbar__inner-glass']} />
           <Link href="/" className={styles.navbar__logo}>
