@@ -13,11 +13,11 @@ import type { ScrapedPage, ExtractedBusinessContext } from './scraper.types';
 
 // ── LLM Config ──────────────────────────────────────────────────────────────
 
-const EXTRACTION_MODEL = 'llama-3.1-8b-instant';
+const EXTRACTION_MODEL = 'openai/gpt-oss-20b';
 const EXTRACTION_TEMPERATURE = 0.3; // Low temp for structured extraction
 const EXTRACTION_MAX_TOKENS = 4096;
 
-const PROMPT_GEN_MODEL = 'llama-3.1-8b-instant';
+const PROMPT_GEN_MODEL = 'openai/gpt-oss-20b';
 const PROMPT_GEN_TEMPERATURE = 0.7;
 const PROMPT_GEN_MAX_TOKENS = 2048;
 
