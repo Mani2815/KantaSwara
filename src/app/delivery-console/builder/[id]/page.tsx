@@ -4,7 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Settings, FileText, Bot, MessageSquare, Workflow, Database, 
   Mic, Plug, Variable, PlayCircle, ClipboardCheck, Rocket, 
-  Building, History, Clock, Users, Save, CheckCircle2, ChevronLeft, Loader2
+  Building, History, Clock, Users, Save, CheckCircle2, ChevronLeft, Loader2,
+  Globe, Sparkles, AlertCircle, Check
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -39,6 +40,65 @@ export default function AgentBuilderPage({ params }: { params: Promise<{ id: str
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [data, setData] = useState<any>(null);
+
+  // ── Website Import State ────────────────────────────────────────────────
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [isScrapingWebsite, setIsScrapingWebsite] = useState(false);
+  const [scrapeResult, setScrapeResult] = useState<any>(null);
+  const [scrapeError, setScrapeError] = useState<string | null>(null);
+
+  const handleScrapeWebsite = async () => {
+    if (!websiteUrl.trim()) return;
+    setIsScrapingWebsite(true);
+    setScrapeResult(null);
+    setScrapeError(null);
+
+    try {
+      const res = await fetch('/api/v1/scraper/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: websiteUrl, maxPages: 5 }),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || result.status === 'failed') {
+        setScrapeError(result.errors?.[0] || result.message || 'Failed to scrape website');
+        return;
+      }
+
+      setScrapeResult(result);
+      toast.success(`Scraped ${result.pagesScraped} pages from ${result.context?.companyName || 'website'}`);
+    } catch (err: any) {
+      setScrapeError(err.message || 'Network error while scraping website');
+    } finally {
+      setIsScrapingWebsite(false);
+    }
+  };
+
+  const handleApplyScrapeResult = () => {
+    if (!scrapeResult?.context) return;
+    const ctx = scrapeResult.context;
+
+    setData((prev: any) => ({
+      ...prev,
+      overview: {
+        ...prev?.overview,
+        name: ctx.companyName ? `${ctx.companyName} Agent` : prev?.overview?.name,
+        description: ctx.description || prev?.overview?.description,
+      },
+      prompts: {
+        ...prev?.prompts,
+        system_prompt: ctx.suggestedSystemPrompt || prev?.prompts?.system_prompt,
+      },
+      agent: {
+        ...prev?.agent,
+        welcome_message: ctx.suggestedGreeting || prev?.agent?.welcome_message,
+      },
+    }));
+
+    toast.success('Applied extracted context — check Prompts and Agent tabs!');
+  };
   
   const isNew = unwrappedParams.id === 'new';
 
@@ -278,6 +338,112 @@ export default function AgentBuilderPage({ params }: { params: Promise<{ id: str
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* ── Import from Website ─────────────────────────── */}
+                <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border-default)] shadow-sm rounded-2xl p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Globe size={18} className="text-indigo-500" />
+                    <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Import from Website</h2>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">AI-Powered</span>
+                  </div>
+                  <p className="text-xs text-[var(--color-text-secondary)] mb-4">
+                    Paste your client&apos;s website URL to automatically extract business context, generate a system prompt, and pre-fill agent configuration.
+                  </p>
+
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      value={websiteUrl}
+                      onChange={(e) => setWebsiteUrl(e.target.value)}
+                      placeholder="https://example.com"
+                      className="flex-1 bg-[var(--color-bg-base)] border border-[var(--color-border-default)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-indigo-500 focus:outline-none"
+                      onKeyDown={(e) => e.key === 'Enter' && handleScrapeWebsite()}
+                    />
+                    <button
+                      onClick={handleScrapeWebsite}
+                      disabled={isScrapingWebsite || !websiteUrl.trim()}
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white text-sm font-medium rounded-lg hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    >
+                      {isScrapingWebsite ? (
+                        <><Loader2 size={14} className="animate-spin" /> Analyzing...</>
+                      ) : (
+                        <><Sparkles size={14} /> Extract Context</>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Scrape Error */}
+                  {scrapeError && (
+                    <div className="mt-3 flex items-start gap-2 p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
+                      <AlertCircle size={14} className="text-red-500 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-red-400">{scrapeError}</p>
+                    </div>
+                  )}
+
+                  {/* Scrape Result Preview */}
+                  {scrapeResult?.context && (
+                    <div className="mt-4 space-y-3">
+                      <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Check size={14} className="text-emerald-500" />
+                            <span className="text-sm font-medium text-emerald-500">
+                              Extracted from {scrapeResult.pagesScraped} page{scrapeResult.pagesScraped > 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-[var(--color-text-muted)]">
+                            {scrapeResult.durationMs ? `${(scrapeResult.durationMs / 1000).toFixed(1)}s` : ''}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 text-xs">
+                          <div>
+                            <span className="text-[var(--color-text-muted)]">Company</span>
+                            <p className="font-medium text-[var(--color-text-primary)]">{scrapeResult.context.companyName}</p>
+                          </div>
+                          <div>
+                            <span className="text-[var(--color-text-muted)]">Industry</span>
+                            <p className="font-medium text-[var(--color-text-primary)]">{scrapeResult.context.industry}</p>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-[var(--color-text-muted)]">Description</span>
+                            <p className="text-[var(--color-text-primary)]">{scrapeResult.context.description}</p>
+                          </div>
+                          {scrapeResult.context.products?.length > 0 && (
+                            <div className="col-span-2">
+                              <span className="text-[var(--color-text-muted)]">Products/Services ({scrapeResult.context.products.length})</span>
+                              <p className="text-[var(--color-text-primary)]">
+                                {scrapeResult.context.products.slice(0, 3).map((p: any) => p.name).join(', ')}
+                                {scrapeResult.context.products.length > 3 ? ` +${scrapeResult.context.products.length - 3} more` : ''}
+                              </p>
+                            </div>
+                          )}
+                          <div>
+                            <span className="text-[var(--color-text-muted)]">Tone</span>
+                            <p className="font-medium text-[var(--color-text-primary)] capitalize">{scrapeResult.context.toneOfVoice}</p>
+                          </div>
+                          {scrapeResult.context.keySellingPoints?.length > 0 && (
+                            <div>
+                              <span className="text-[var(--color-text-muted)]">Key Points</span>
+                              <p className="text-[var(--color-text-primary)]">{scrapeResult.context.keySellingPoints.length} extracted</p>
+                            </div>
+                          )}
+                        </div>
+
+                        <button
+                          onClick={handleApplyScrapeResult}
+                          className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500 text-white text-sm font-medium rounded-lg hover:bg-emerald-600 transition-colors shadow-sm"
+                        >
+                          <Sparkles size={14} />
+                          Apply to Agent Configuration
+                        </button>
+                        <p className="text-[10px] text-center text-[var(--color-text-muted)]">
+                          This will fill in Agent Name, System Prompt, and Welcome Message. You can review and edit everything.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
