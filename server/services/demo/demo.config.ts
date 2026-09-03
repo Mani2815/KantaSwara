@@ -21,7 +21,7 @@ export const DEMO_AGENT_CONFIG = {
 
   // ── LLM settings ──────────────────────────────────────────────────────────
   llm: {
-    model: 'llama-3.1-8b-instant', // Supported Groq model — fast inference
+    model: 'openai/gpt-oss-20b', // Supported Groq model — fast inference
     temperature: 0.8,
     maxTokens: 300, // Keep responses concise for voice
     topP: 0.9,
