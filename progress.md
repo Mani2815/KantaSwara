@@ -52,6 +52,12 @@ A visitor lands on the website → clicks "Try Live Demo" → instantly talks to
 - Updated `useDemo` hook and API route for domain selection.
 - Two-phase demo page: domain selection cards → voice session with domain-specific UI.
 
+#### Milestone 2.7 — Voice Tuning & Context Scraping
+- **VAD Optimization:** Increased `redemptionMs` to 500ms to allow natural human pauses without cutting off the user.
+- **Natural Speech Personas:** Injected `VOICE DELIVERY STYLE` instructions into all demo personas (Rani, Arjun, Kavitha, Rohan) to force conversational phrasing (contractions, fillers, varied rhythm).
+- **Web Scraping Feature:** Built an end-to-end context extraction pipeline using Node `fetch` and Groq LLM.
+- **Agent Builder Integration:** Added "Import from Website" UI in the Delivery Console to auto-fill Agent Name, System Prompt, and Greeting from a scraped URL.
+
 #### Phase 2 (Enterprise) — Provider Failover & Multi-Provider
 - Health monitor (`provider-health.service.ts`) tracking latency, success rates, and availability.
 - Circuit breaker pattern implemented for failed providers.

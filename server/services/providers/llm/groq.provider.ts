@@ -15,7 +15,7 @@ import type {
 } from '../types';
 import { handleHttpError } from '../errors';
 
-const DEFAULT_MODEL = 'llama-3.1-8b-instant';
+const DEFAULT_MODEL = 'llama3-8b-8192';
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_MAX_TOKENS = 512;
 
