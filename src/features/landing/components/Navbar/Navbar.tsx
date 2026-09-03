@@ -81,7 +81,7 @@ export function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const showTopBar = scrolled && isScrollingUp;
+  const showTopBar = !scrolled || isScrollingUp;
 
   return (
     <>
