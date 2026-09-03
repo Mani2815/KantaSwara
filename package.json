@@ -3,18 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": "22",
-    "npm": ">=10"
+    "node": ">=22.x",
+    "npm": ">=10.x"
   },
   "scripts": {
-    "dev": "tsx server/dev-server.ts",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "start:ws": "tsx server/standalone-ws.ts",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "predev": "node scripts/validate-env.mjs && node scripts/validate-db.mjs && node scripts/copy-ort-wasm.mjs",
-    "prebuild": "node scripts/validate-env.mjs && node scripts/copy-ort-wasm.mjs",
+    "predev": "node scripts/validate-env.mjs && node scripts/validate-db.mjs",
+    "prebuild": "node scripts/validate-env.mjs",
     "db:migrate": "node scripts/run-migrations.mjs",
     "db:apply": "node scripts/apply-migration.mjs",
     "db:fix": "node scripts/apply-fix.mjs",
@@ -49,7 +48,7 @@
     "next": "16.2.9",
     "nodemailer": "^9.0.3",
     "ogl": "^1.0.11",
-    "onnxruntime-web": "1.19.2",
+    "onnxruntime-web": "^1.29.0",
     "pg": "^8.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -77,7 +76,6 @@
     "postcss": "^8.5.15",
     "prisma": "^7.8.0",
     "tailwindcss": "^3.4.19",
-    "tsx": "^4.23.13",
     "typescript": "^5"
   }
 }
