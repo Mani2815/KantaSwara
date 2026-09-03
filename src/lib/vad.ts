@@ -8,7 +8,7 @@
 // End-of-turn combines VAD silence + STT is_final + linguistic check + 700ms escape hatch.
 //
 // Configuration:
-// - redemptionMs: 200ms (aggressive, but STT+linguistic check add safety)
+// - redemptionMs: 500ms (tolerant of pauses; STT+linguistic check add safety)
 // - Runs continuously — does NOT pause while agent speaks
 // - Browser AEC handles echo cancellation for barge-in
 // =============================================================================
@@ -43,11 +43,11 @@ export class VADWrapper {
         negativeSpeechThreshold: 0.35,
 
         // ── Adaptive endpointing ──────────────────────────────────
-        // 200ms silence before declaring speech end.
-        // This is aggressive but safe because:
-        // - STT is_final + linguistic check add another layer
-        // - 700ms escape hatch prevents indefinite waiting
-        redemptionMs: 200,
+        // 500ms silence before declaring speech end.
+        // Generous enough to tolerate brief pauses, gasps, and
+        // mid-sentence thinking — STT is_final + linguistic check
+        // + 700ms escape hatch handle the actual end-of-turn decision.
+        redemptionMs: 500,
 
         // Catch the beginning of words that start before model fires
         preSpeechPadMs: 250,
