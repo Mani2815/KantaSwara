@@ -1,9 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220">
-  <g stroke="#ff6600" strokeWidth="20" fill="none">
-    <circle cx="110" cy="110" r="40" />
-    <circle cx="110" cy="110" r="70" />
-    <circle cx="110" cy="110" r="100" />
+  <rect width="220" height="220" fill="#ffffff" />
+  <g stroke="#ff6600" strokeWidth="24" fill="none">
+    <circle cx="110" cy="110" r="38" />
+    <circle cx="110" cy="110" r="68" />
+    <circle cx="110" cy="110" r="98" />
   </g>
-  <circle cx="110" cy="110" r="18" fill="#ff6600" />
-  <circle cx="110" cy="110" r="8" fill="#ffffff" />
+  <circle cx="110" cy="110" r="20" fill="#ff6600" />
+  <circle cx="110" cy="110" r="9" fill="#ffffff" />
 </svg>
